@@ -2,7 +2,7 @@
 
 This is a simple shell extension for Gnome 3.
 It features a small symbolic Syncthing icon that opens a menu with
-- an on/off switch for starting/stopping Syncthing byutilizing `systemd`
+- an on/off switch for starting/stopping Syncthing by utilizing `systemd --user`
 - a button for opening the Web user interface
 - a list of folders that are managed by Syncthing
 

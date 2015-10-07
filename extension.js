@@ -215,9 +215,9 @@ const TimeoutManager = new Lang.Class({
 });
 
 
-function init(meta) {
+function init(extension) {
     let icon_theme = imports.gi.Gtk.IconTheme.get_default();
-    icon_theme.append_search_path(meta.path + '/icons');
+    icon_theme.append_search_path(extension.path + '/icons');
 }
 
 

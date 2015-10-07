@@ -2,15 +2,14 @@
 
 This is a simple shell extension for Gnome 3.
 It features a small symbolic Syncthing icon that opens a menu with
-- an on/off switch for starting/stopping Syncthing by utilizing `systemd --user`
-- a button for opening the Web user interface
+- an on/off switch for starting/stopping Syncthing by utilizing `systemctl --user`
+- a button for opening the Web user interface (http://localhost:8384 or some other configurable URI)
 - a list of folders that are managed by Syncthing
 
-## Install
-Copy the files:
+## Installation
+To install, just run:
 ```sh
-mkdir -p ~/.local/share/gnome-shell/extensions/syncthingicon@jay.strict@posteo.de
-cp -R * ~/.local/share/gnome-shell/extensions/syncthingicon@jay.strict@posteo.de/
+./install.sh
 ```
 
 Activate:

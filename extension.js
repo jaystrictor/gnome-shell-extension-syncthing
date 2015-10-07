@@ -12,6 +12,13 @@ const PopupMenu = imports.ui.popupMenu;
 
 const _httpSession = new Soup.Session();
 
+const GETTEXT_DOMAIN = 'gnome-shell-extension-syncthing';
+const Gettext = imports.gettext.domain(GETTEXT_DOMAIN);
+const _ = Gettext.gettext;
+
+const ExtensionUtils = imports.misc.extensionUtils;
+const Me = ExtensionUtils.getCurrentExtension();
+const Convenience = Me.imports.convenience;
 
 const FolderInfo = new Lang.Class({
     Name: 'FolderInfo',
@@ -59,7 +66,7 @@ const FolderMenuItem = new Lang.Class({
         try {
             Gio.AppInfo.launch_default_for_uri(this._uri, launchContext);
         } catch(e) {
-            Main.notifyError(_("Failed to launch \"%s\"").format(this._uri), e.message);
+            Main.notifyError(_("Failed to launch URI \"%s\"").format(this._uri), e.message);
         }
 
 	this.parent(event);
@@ -94,6 +101,8 @@ const SyncthingMenu = new Lang.Class({
         this.menu.addMenuItem(this.folderMenu);
 
         this._timeoutManager = new TimeoutManager(1, 60, Lang.bind(this, this.updateMenu));
+
+        this._settings = Convenience.getSettings();
     },
 
     _updateFolderList : function(config) {
@@ -107,7 +116,6 @@ const SyncthingMenu = new Lang.Class({
         }
     },
 
-
     _soup_connected : function(session, msg) {
         if (msg.status_code !== 200) {
             return;
@@ -118,11 +126,12 @@ const SyncthingMenu = new Lang.Class({
     },
 
     _onConfig : function(actor, event) {
+        let uri = this._settings.get_string('configuration-uri');
         let launchContext = global.create_app_launch_context(event.get_time(), -1);
         try {
-            Gio.AppInfo.launch_default_for_uri('http://localhost:8384', launchContext);
+            Gio.AppInfo.launch_default_for_uri(uri, launchContext);
         } catch(e) {
-            Main.notifyError(_("Failed to launch Syncthing configuration."), e.message);
+            Main.notifyError(_("Failed to launch URI \"%s\"").format(uri), e.message);
         }
     },
 
@@ -216,6 +225,7 @@ const TimeoutManager = new Lang.Class({
 
 
 function init(extension) {
+    Convenience.initTranslations(GETTEXT_DOMAIN);
     let icon_theme = imports.gi.Gtk.IconTheme.get_default();
     icon_theme.append_search_path(extension.path + '/icons');
 }

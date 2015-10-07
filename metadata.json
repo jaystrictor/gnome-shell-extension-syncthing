@@ -3,5 +3,6 @@
     "uuid": "syncthingicon@jay.strict@posteo.de",
     "url": "https://github.com/jaystrictor/gnome-shell-extension-syncthing.git",
     "name": "Syncthing Icon",
-    "description": "Display Syncthing Icon in Top Bar"
+    "description": "Display Syncthing Icon in Top Bar",
+    "settings-schema": "org.gnome.shell.extensions.syncthing"
 }

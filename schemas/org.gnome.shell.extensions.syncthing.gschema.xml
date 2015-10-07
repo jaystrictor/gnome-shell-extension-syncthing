@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="gnome-shell-extension-syncthing">
+  <schema path="/org/gnome/shell/extensions/syncthing/" id="org.gnome.shell.extensions.syncthing">
+    <key type="s" name="configuration-uri">
+      <default>"http://localhost:8384"</default>
+      <summary>Alternative Configuration URI</summary>
+      <description>The URI to load when the 'Configuration' button is clicked.</description>
+    </key>
+  </schema>
+</schemalist>

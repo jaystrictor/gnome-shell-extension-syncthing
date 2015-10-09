@@ -20,7 +20,7 @@ const SyncthingIconPrefsWidget = new GObject.Class({
         this.parent(params);
         this.margin = 18;
         this.row_spacing = this.column_spacing = 12;
-	this.orientation = Gtk.Orientation.HORIZONTAL;
+        this.orientation = Gtk.Orientation.HORIZONTAL;
 
         let presentLabel = '<b>' + _("Alternative Configuration URI") + '</b>';
         this.add(new Gtk.Label({ label: presentLabel,
@@ -35,8 +35,8 @@ const SyncthingIconPrefsWidget = new GObject.Class({
         reset_button.connect('clicked', Lang.bind(this, this._onReset));
         this.add(reset_button);
 
-	this._settings = Convenience.getSettings();
-	this._settings.bind('configuration-uri', entry, 'text', Gio.SettingsBindFlags.DEFAULT);
+        this._settings = Convenience.getSettings();
+        this._settings.bind('configuration-uri', entry, 'text', Gio.SettingsBindFlags.DEFAULT);
     },
 
     _onReset : function() {

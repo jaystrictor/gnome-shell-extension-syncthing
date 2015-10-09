@@ -1,5 +1,5 @@
 {
-    "shell-version": ["3.16"],
+    "shell-version": ["3.16", "3.18"],
     "uuid": "syncthingicon@jay.strict@posteo.de",
     "url": "https://github.com/jaystrictor/gnome-shell-extension-syncthing.git",
     "name": "Syncthing Icon",

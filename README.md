@@ -16,3 +16,14 @@ Activate:
 ```sh
 gnome-shell-extension-prefs &
 ```
+
+## systemd
+This extension utilizes the **user** service management facilities of systemd.
+Please make sure that you have the user units installed correctly, otherwise the on/off switch will not work.
+You can check with
+```sh
+systemctl --user list-unit-files
+```
+
+For further information, please see the
+[Syncthing documentation](http://docs.syncthing.net/users/autostart.html#how-to-use-the-user-instance).

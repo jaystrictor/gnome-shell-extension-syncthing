@@ -17,10 +17,10 @@ user units installed correctly, otherwise the on/off switch will not work.
 
 ### extensions.gnome.org
 
-The easiest way to install the extension will be from the Gnome extensions website.
+The easiest way to install the Syncthing Icon will be from the Gnome Extensions website.
 [See my listing there](https://extensions.gnome.org/extension/989/syncthing-icon/).
-You can install and activate the extension all at once by click the switch to
-ON, and next to the switch, you can click to wrench icon to configure the
+You can install and activate the extension all at once by clicking the switch to
+ON, and next to the switch, you can click the wrench icon to configure the
 extension, in case you need to change the port number for the Syncthing web
 client.
 
@@ -46,6 +46,9 @@ gnome-shell-extension-prefs &
 
 Or, if you have the Gnome Tweak Tool installed, you can launch that and go to
 the Extensions tab.
+
+You can also manage shell extensions from the Gnome Extensions website:
+https://extensions.gnome.org/local/
 
 Once you see the list of extensions, look for "Syncthing icon," and click to
 set the switch to ON.

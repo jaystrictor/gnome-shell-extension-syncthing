@@ -1,5 +1,7 @@
 # Syncthing Gnome Shell extension
 
+![ScreenShot](https://extensions.gnome.org/static/extension-data/screenshots/screenshot_989_IHHWFhj.png)
+
 This is a simple shell extension for Gnome 3.
 It features a small symbolic Syncthing icon that opens a menu with
 - an on/off switch for starting/stopping Syncthing

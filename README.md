@@ -7,12 +7,27 @@ It features a small symbolic Syncthing icon that opens a menu with
 - a list of folders that are managed by Syncthing
 
 ## Requirements
+
 This extension uses the **user service** management facilities of systemd. The
 [Syncthing documentation](http://docs.syncthing.net/users/autostart.html#how-to-use-the-user-instance)
 has information about how to set this up. Please make sure that you have the
 user units installed correctly, otherwise the on/off switch will not work.
 
 ## Installation
+
+### extensions.gnome.org
+
+The easiest way to install the extension will be from the Gnome extensions website.
+[See my listing there](https://extensions.gnome.org/extension/989/syncthing-icon/).
+You can install and activate the extension all at once by click the switch to
+ON, and next to the switch, you can click to wrench icon to configure the
+extension, in case you need to change the port number for the Syncthing web
+client.
+
+If you have any trouble with this, see the Gnome Shell Extensions site's
+[FAQ page](https://extensions.gnome.org/about/).
+
+### installing manually
 
 The install script will make sure all the necessary files are copied to the
 correct place for you.

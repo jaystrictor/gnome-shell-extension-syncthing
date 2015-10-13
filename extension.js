@@ -81,10 +81,10 @@ const SyncthingMenu = new Lang.Class({
     _init: function() {
         this.parent(0.0, "Syncthing");
 
-        let syncthingIcon = new St.Icon({ icon_name: 'syncthing-logo-symbolic',
+        this._syncthingIcon = new St.Icon({ icon_name: 'syncthing-logo-symbolic',
                                           style_class: 'system-status-icon' });
 
-        this.actor.add_child(syncthingIcon);
+        this.actor.add_child(this._syncthingIcon);
 
         this.item_switch = new PopupMenu.PopupSwitchMenuItem("Syncthing", false, null);
         this.item_switch.connect('activate', Lang.bind(this, this._onSwitch));
@@ -157,12 +157,14 @@ const SyncthingMenu = new Lang.Class({
     updateMenu : function() {
         let state = this.getSyncthingState();
         if (state === 'active') {
+            this._syncthingIcon.icon_name = 'syncthing-logo-symbolic';
             this.item_switch.setSensitive(true);
             this.item_switch.setToggleState(true);
             this.item_config.setSensitive(true);
             let msg = Soup.Message.new('GET', 'http://localhost:8384/rest/system/config');
             _httpSession.queue_message(msg, Lang.bind(this, this._soup_connected));
         } else if (state === 'inactive') {
+            this._syncthingIcon.icon_name = 'syncthing-off-symbolic';
             this.item_switch.setSensitive(true);
             this.item_switch.setToggleState(false);
             this.item_config.setSensitive(false);

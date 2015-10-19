@@ -100,7 +100,8 @@ const SyncthingMenu = new Lang.Class({
         this.folderMenu = new PopupMenu.PopupMenuSection()
         this.menu.addMenuItem(this.folderMenu);
 
-        this._timeoutManager = new TimeoutManager(1, 60, Lang.bind(this, this.updateMenu));
+        this.updateMenu();
+        this._timeoutManager = new TimeoutManager(1, 10, Lang.bind(this, this.updateMenu));
 
         this._settings = Convenience.getSettings();
     },
@@ -139,11 +140,11 @@ const SyncthingMenu = new Lang.Class({
         if (actor.state) {
             let argv = '/usr/bin/systemctl --user start syncthing.service';
             GLib.spawn_sync(null, argv.split(' '), null, GLib.SpawnFlags.DEFAULT, null);
-            this._timeoutManager.changeTimeout(1, 60);
+            this._timeoutManager.changeTimeout(1, 10);
         } else {
             let argv = '/usr/bin/systemctl --user stop syncthing.service';
             GLib.spawn_sync(null, argv.split(' '), null, GLib.SpawnFlags.DEFAULT, null);
-            this._timeoutManager.changeTimeout(60, 60);
+            this._timeoutManager.changeTimeout(10, 10);
         }
         this.updateMenu();
     },

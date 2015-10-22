@@ -22,7 +22,7 @@ const SyncthingIconPrefsWidget = new GObject.Class({
         this.row_spacing = this.column_spacing = 12;
         this.orientation = Gtk.Orientation.HORIZONTAL;
 
-        let presentLabel = '<b>' + _("Alternative Configuration URI") + '</b>';
+        let presentLabel = '<b>' + _("Alternative Web Interface URI") + '</b>';
         this.add(new Gtk.Label({ label: presentLabel,
                                  use_markup: true,
                                  halign: Gtk.Align.END }));

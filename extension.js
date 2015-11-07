@@ -138,20 +138,20 @@ const SyncthingMenu = new Lang.Class({
 
     _onSwitch : function(actor, event) {
         if (actor.state) {
-            let argv = '/usr/bin/systemctl --user start syncthing.service';
-            GLib.spawn_sync(null, argv.split(' '), null, GLib.SpawnFlags.DEFAULT, null);
+            let argv = 'systemctl --user start syncthing.service';
+            GLib.spawn_sync(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
             this._timeoutManager.changeTimeout(1, 10);
         } else {
-            let argv = '/usr/bin/systemctl --user stop syncthing.service';
-            GLib.spawn_sync(null, argv.split(' '), null, GLib.SpawnFlags.DEFAULT, null);
+            let argv = 'systemctl --user stop syncthing.service';
+            GLib.spawn_sync(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
             this._timeoutManager.changeTimeout(10, 10);
         }
         this.updateMenu();
     },
 
     getSyncthingState : function() {
-        let argv = '/usr/bin/systemctl --user is-active syncthing.service';
-        let result = GLib.spawn_sync(null, argv.split(' '), null, GLib.SpawnFlags.DEFAULT, null);
+        let argv = 'systemctl --user is-active syncthing.service';
+        let result = GLib.spawn_sync(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
         return result[1].toString().trim();
     },
 

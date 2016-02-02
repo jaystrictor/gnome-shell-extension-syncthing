@@ -80,6 +80,7 @@ const SyncthingMenu = new Lang.Class({
 
     _init: function() {
         this.parent(0.0, "Syncthing");
+        this._settings = Convenience.getSettings();
 
         this._syncthingIcon = new St.Icon({ icon_name: 'syncthing-logo-symbolic',
                                           style_class: 'system-status-icon' });
@@ -100,15 +101,15 @@ const SyncthingMenu = new Lang.Class({
         this.folderMenu = new PopupMenu.PopupMenuSection()
         this.menu.addMenuItem(this.folderMenu);
 
-        this.updateMenu();
-        this._timeoutManager = new TimeoutManager(1, 10, Lang.bind(this, this.updateMenu));
-
-        this._settings = Convenience.getSettings();
+        this._updateMenu();
+        this._timeoutManager = new TimeoutManager(1, 10, Lang.bind(this, this._updateMenu));
     },
 
     _updateFolderList : function(config) {
+        // First delete the old list.
         this.folderMenu.removeAll();
-        // maybe it is better to destroy all children of this.folderMenu ?
+        // maybe it is better to destroy all children of this.folderMenu instead of
+        // calling removeAll() ?
 
         for (let i = 0; i < config.folders.length; i++) {
             let folderInfo = new FolderInfo(config.folders[i]);
@@ -146,7 +147,7 @@ const SyncthingMenu = new Lang.Class({
             GLib.spawn_sync(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
             this._timeoutManager.changeTimeout(10, 10);
         }
-        this.updateMenu();
+        this._updateMenu();
     },
 
     getSyncthingState : function() {
@@ -155,14 +156,16 @@ const SyncthingMenu = new Lang.Class({
         return result[1].toString().trim();
     },
 
-    updateMenu : function() {
+    _updateMenu : function() {
         let state = this.getSyncthingState();
+        // The current syncthing config is fetched from 'http://localhost:8384/rest/system/config' or similar
+        let config_uri = this._settings.get_string('configuration-uri') + '/rest/system/config';
         if (state === 'active') {
             this._syncthingIcon.icon_name = 'syncthing-logo-symbolic';
             this.item_switch.setSensitive(true);
             this.item_switch.setToggleState(true);
             this.item_config.setSensitive(true);
-            let msg = Soup.Message.new('GET', 'http://localhost:8384/rest/system/config');
+            let msg = Soup.Message.new('GET', config_uri);
             _httpSession.queue_message(msg, Lang.bind(this, this._soup_connected));
         } else if (state === 'inactive') {
             this._syncthingIcon.icon_name = 'syncthing-off-symbolic';
@@ -172,7 +175,7 @@ const SyncthingMenu = new Lang.Class({
         } else { // (state === 'unknown')
             this.item_switch.setSensitive(false);
             this.item_config.setSensitive(true);
-            let msg = Soup.Message.new('GET', 'http://localhost:8384/rest/system/config');
+            let msg = Soup.Message.new('GET', config_uri);
             _httpSession.queue_message(msg, Lang.bind(this, this._soup_connected));
         }
     },

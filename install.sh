@@ -1,14 +1,10 @@
 #!/bin/sh
 
+./build.sh
+
 INSTALL_DIR=$HOME/.local/share/gnome-shell/extensions/syncthingicon@jay.strict@posteo.de
 
-glib-compile-schemas schemas/
-
+rm -r $INSTALL_DIR
 mkdir -p $INSTALL_DIR
 
-cp convenience.js $INSTALL_DIR/
-cp extension.js $INSTALL_DIR/
-cp prefs.js $INSTALL_DIR/
-cp metadata.json $INSTALL_DIR/
-cp -R icons/ $INSTALL_DIR/
-cp -R schemas/ $INSTALL_DIR/
+unzip syncthingicon.zip -d $INSTALL_DIR

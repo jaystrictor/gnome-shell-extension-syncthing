@@ -19,6 +19,104 @@ const _ = Gettext.gettext;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;
+const Sax = Me.imports.sax;
+
+const ConfigParser = new Lang.Class({
+    Name: 'ConfigParser',
+
+    _init: function() {
+        this._settings = Convenience.getSettings();
+
+        this.running_state = 'ready';
+        this.run_scheduled = false;
+    },
+
+    run_later: function() {
+        if (this.running_state === 'ready') {
+            this.running_state = 'running';
+            this.run();
+        } else if ('cooldown') {
+            this.run_scheduled = true;
+        } else {
+            // running_state === 'running'
+            // nothing to do here, as we run synchronously
+            // TODO: run the parser in a seperate thread ?
+        }
+    },
+
+    _stop_cooldown: function() {
+        this.running_state = 'ready';
+        if (this.run_scheduled) {
+            this.run_scheduled = false;
+            this.running_state = 'running';
+            this.run();
+        }
+        this._source = null;
+        return false;
+    },
+
+    run: function() {
+        this.state = 'root';
+        this.address = null;
+        this.tls = false;
+
+        let user_config_dir = GLib.get_user_config_dir();
+        this.filename = user_config_dir + '/syncthing/config.xml';
+        let input_file = Gio.File.new_for_path(this.filename);
+        let success, data, tag;
+        [success, data, tag] = input_file.load_contents(null);
+
+        this.parser = Sax.sax.parser(true);
+        this.parser.onerror = Lang.bind(this, this.onError);
+        this.parser.onopentag = Lang.bind(this, this.onOpenTag);
+        this.parser.ontext = Lang.bind(this, this.onText);
+
+        this.parser.write(data);
+        this.running_state = 'cooldown';
+        // Stop cooldown after 10 seconds.
+        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, 10, Lang.bind(this, this._stop_cooldown));
+    },
+
+    getURI: function() {
+        if (this.address) {
+            if (this.tls)
+                return "https://" + this.address;
+            else
+                return "http://" + this.address;
+        }
+        return this._settings.get_default_value('configuration-uri').unpack();
+    },
+
+    onError: function(error) {
+        log("Parsing " + this.filename + ": " + error);
+        this.address = null;
+        // We should abort the parsing process here.
+    },
+
+    onText: function(text) {
+        if (this.state === 'address') {
+            this.address = text;
+            this.state = 'end';
+        }
+    },
+
+    onOpenTag: function(tag) {
+        if (this.state === 'root' && tag.name === 'gui') {
+            this.state = 'gui';
+            if (tag.attributes['tls'].toUpperCase() == "TRUE")
+                this.tls = true;
+            return;
+        }
+        if (this.state === 'gui' && tag.name === 'address') {
+            this.state = 'address';
+        }
+    },
+
+    destroy: function() {
+        if (this._source)
+            GLib.Source.remove(this._source);
+    },
+});
 
 const FolderInfo = new Lang.Class({
     Name: 'FolderInfo',
@@ -101,6 +199,8 @@ const SyncthingMenu = new Lang.Class({
         this.folderMenu = new PopupMenu.PopupMenuSection()
         this.menu.addMenuItem(this.folderMenu);
 
+        this._configparser = new ConfigParser();
+
         this._updateMenu();
         this._timeoutManager = new TimeoutManager(1, 10, Lang.bind(this, this._updateMenu));
     },
@@ -120,15 +220,22 @@ const SyncthingMenu = new Lang.Class({
 
     _soup_connected : function(session, msg) {
         if (msg.status_code !== 200) {
+            // Failed to connect.
+            if (this._settings.get_boolean('autoconfig')) {
+                // Issue a configuration parsing run.
+                this._configparser.run_later();
+            }
             return;
         }
         let data = msg.response_body.data;
+        // TODO: parse data to see if it is a valid syncthing connection
+        // otherwise, issue _configparser.run_later();
         let config = JSON.parse(data);
         this._updateFolderList(config);
     },
 
     _onConfig : function(actor, event) {
-        let uri = this._settings.get_string('configuration-uri');
+        let uri = this.getBaseURI();
         let launchContext = global.create_app_launch_context(event.get_time(), -1);
         try {
             Gio.AppInfo.launch_default_for_uri(uri, launchContext);
@@ -150,6 +257,14 @@ const SyncthingMenu = new Lang.Class({
         this._updateMenu();
     },
 
+    getBaseURI : function() {
+        if (this._settings.get_boolean('autoconfig')) {
+            return this._configparser.getURI();
+        } else {
+            return this._settings.get_string('configuration-uri');
+        }
+    },
+
     getSyncthingState : function() {
         let argv = 'systemctl --user is-active syncthing.service';
         let result = GLib.spawn_sync(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
@@ -159,7 +274,7 @@ const SyncthingMenu = new Lang.Class({
     _updateMenu : function() {
         let state = this.getSyncthingState();
         // The current syncthing config is fetched from 'http://localhost:8384/rest/system/config' or similar
-        let config_uri = this._settings.get_string('configuration-uri') + '/rest/system/config';
+        let config_uri = this.getBaseURI() + '/rest/system/config';
         if (state === 'active') {
             this._syncthingIcon.icon_name = 'syncthing-logo-symbolic';
             this.item_switch.setSensitive(true);
@@ -182,6 +297,7 @@ const SyncthingMenu = new Lang.Class({
 
     destroy: function() {
         this._timeoutManager.cancel();
+        this._configparser.destroy();
         this.parent();
     },
 });

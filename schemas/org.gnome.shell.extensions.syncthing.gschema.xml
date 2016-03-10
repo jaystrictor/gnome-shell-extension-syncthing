@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="gnome-shell-extension-syncthing">
   <schema path="/org/gnome/shell/extensions/syncthing/" id="org.gnome.shell.extensions.syncthing">
-    <key type="s" name="configuration-uri">
+    <key name="autoconfig" type="b">
+      <default>true</default>
+      <summary>Automatic determinization of the REST API interface URI</summary>
+      <description>Automatic configuration of the web interface URI. If set to 'true', probe file 'config.xml' for the URI, otherwise take the alternative URI.</description>
+    </key>
+    <key name="configuration-uri" type="s">
       <default>"http://localhost:8384"</default>
       <summary>Alternative Web Interface URI</summary>
       <description>The URI to load when the 'Web Interface' button is clicked.</description>

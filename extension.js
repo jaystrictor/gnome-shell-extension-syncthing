@@ -11,6 +11,8 @@ const PopupMenu = imports.ui.popupMenu;
 
 
 const _httpSession = new Soup.Session();
+const config_filename = GLib.get_user_config_dir() + '/syncthing/config.xml';
+const configfile = Gio.File.new_for_path(config_filename);
 
 const GETTEXT_DOMAIN = 'gnome-shell-extension-syncthing';
 const Gettext = imports.gettext.domain(GETTEXT_DOMAIN);
@@ -19,28 +21,34 @@ const _ = Gettext.gettext;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;
+const Settings = Convenience.getSettings();
 const Sax = Me.imports.sax;
 
 const ConfigParser = new Lang.Class({
     Name: 'ConfigParser',
 
     _init: function() {
-        this._settings = Convenience.getSettings();
-
         this.running_state = 'ready';
         this.run_scheduled = false;
+        this.start_monitor();
     },
 
-    run_later: function() {
+    start_monitor: function() {
+        this.monitor = configfile.monitor_file(Gio.FileMonitorFlags.NONE, null);
+        this.monitor.connect('changed', Lang.bind(this, this.configfile_changed));
+        this.configfile_changed();
+    },
+
+    configfile_changed: function(monitor, file, other_file, event_type) {
         if (this.running_state === 'ready') {
             this.running_state = 'running';
             this.run();
-        } else if ('cooldown') {
+        } else if (this.running_state === 'cooldown') {
             this.run_scheduled = true;
         } else {
             // running_state === 'running'
-            // nothing to do here, as we run synchronously
-            // TODO: run the parser in a seperate thread ?
+            // Nothing to do here, as we run synchronously.
+            // Should we run the parser in a seperate thread?
         }
     },
 
@@ -60,18 +68,19 @@ const ConfigParser = new Lang.Class({
         this.address = null;
         this.tls = false;
 
-        let user_config_dir = GLib.get_user_config_dir();
-        this.filename = user_config_dir + '/syncthing/config.xml';
-        let input_file = Gio.File.new_for_path(this.filename);
-        let success, data, tag;
-        [success, data, tag] = input_file.load_contents(null);
-
         this.parser = Sax.sax.parser(true);
         this.parser.onerror = Lang.bind(this, this.onError);
         this.parser.onopentag = Lang.bind(this, this.onOpenTag);
         this.parser.ontext = Lang.bind(this, this.onText);
 
-        this.parser.write(data);
+        try {
+            let success, data, tag;
+            [success, data, tag] = configfile.load_contents(null);
+            this.parser.write(data);
+        } catch (e) {
+            log("Failed to read " + config_filename + ": " + e);
+        }
+
         this.running_state = 'cooldown';
         // Stop cooldown after 10 seconds.
         this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, 10, Lang.bind(this, this._stop_cooldown));
@@ -84,7 +93,7 @@ const ConfigParser = new Lang.Class({
             else
                 return "http://" + this.address;
         }
-        return this._settings.get_default_value('configuration-uri').unpack();
+        return Settings.get_default_value('configuration-uri').unpack();
     },
 
     onError: function(error) {
@@ -178,7 +187,6 @@ const SyncthingMenu = new Lang.Class({
 
     _init: function() {
         this.parent(0.0, "Syncthing");
-        this._settings = Convenience.getSettings();
 
         this._syncthingIcon = new St.Icon({ icon_name: 'syncthing-logo-symbolic',
                                           style_class: 'system-status-icon' });
@@ -199,7 +207,11 @@ const SyncthingMenu = new Lang.Class({
         this.folderMenu = new PopupMenu.PopupMenuSection()
         this.menu.addMenuItem(this.folderMenu);
 
-        this._configparser = new ConfigParser();
+        if (Settings.get_boolean('autoconfig')) {
+            this._configparser = new ConfigParser();
+            // Get new address from ConfigParser.
+            this.baseURI = this._configparser.getURI();
+        }
 
         this._updateMenu();
         this._timeoutManager = new TimeoutManager(1, 10, Lang.bind(this, this._updateMenu));
@@ -221,17 +233,21 @@ const SyncthingMenu = new Lang.Class({
     _soup_connected : function(session, msg) {
         if (msg.status_code !== 200) {
             // Failed to connect.
-            if (this._settings.get_boolean('autoconfig')) {
-                // Issue a configuration parsing run.
-                this._configparser.run_later();
+            if (Settings.get_boolean('autoconfig')) {
+                // Get new address from ConfigParser.
+                this.baseURI = this._configparser.getURI();
             }
             return;
         }
         let data = msg.response_body.data;
-        // TODO: parse data to see if it is a valid syncthing connection
-        // otherwise, issue _configparser.run_later();
         let config = JSON.parse(data);
-        this._updateFolderList(config);
+        // log(JSON.stringify(config, null, 2));
+        if ('version' in config && 'folders' in config && 'devices' in config)
+            // This seems to be a valid syncthing connection.
+            this._updateFolderList(config);
+        else
+            // Get new address from ConfigParser.
+            this.baseURI = this._configparser.getURI();
     },
 
     _onConfig : function(actor, event) {
@@ -258,10 +274,10 @@ const SyncthingMenu = new Lang.Class({
     },
 
     getBaseURI : function() {
-        if (this._settings.get_boolean('autoconfig')) {
-            return this._configparser.getURI();
+        if (Settings.get_boolean('autoconfig')) {
+            return this.baseURI;
         } else {
-            return this._settings.get_string('configuration-uri');
+            return Settings.get_string('configuration-uri');
         }
     },
 
@@ -297,7 +313,8 @@ const SyncthingMenu = new Lang.Class({
 
     destroy: function() {
         this._timeoutManager.cancel();
-        this._configparser.destroy();
+        if (this._configparser)
+            this._configparser.destroy();
         this.parent();
     },
 });

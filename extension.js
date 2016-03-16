@@ -1,4 +1,5 @@
 const Lang = imports.lang;
+const Clutter = imports.gi.Clutter;
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
 const Gtk = imports.gi.Gtk;
@@ -23,6 +24,20 @@ const Me = ExtensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;
 const Settings = Convenience.getSettings();
 const Sax = Me.imports.sax;
+
+
+// http://stackoverflow.com/a/21822316/3472468
+function sortedIndex(array, value) {
+    let low = 0,
+        high = array.length;
+
+    while (low < high) {
+        let mid = (low + high) >>> 1;
+        if (array[mid] < value) low = mid + 1;
+        else high = mid;
+    }
+    return low;
+}
 
 const ConfigParser = new Lang.Class({
     Name: 'ConfigParser',
@@ -60,7 +75,7 @@ const ConfigParser = new Lang.Class({
             this.run();
         }
         this._source = null;
-        return false;
+        return GLib.SOURCE_REMOVE;
     },
 
     run: function() {
@@ -127,26 +142,78 @@ const ConfigParser = new Lang.Class({
     },
 });
 
-const FolderInfo = new Lang.Class({
-    Name: 'FolderInfo',
+const FolderList = new Lang.Class({
+    Name: 'FolderList',
+    Extends: PopupMenu.PopupMenuSection,
 
-    _init: function(config) {
-        this.id = config.id;
-        this.file = Gio.File.new_for_path(config.path);
-        this.icon = this.getIcon();
+    _init: function(getBaseURI) {
+        this.parent();
+        this.folder_ids = [];
+        this.folders = new Map();
+        this.getBaseURI = getBaseURI;
+        this.state = "idle";
     },
 
-    getIcon: function() {
-        try {
-            let info = this.file.query_info('standard::symbolic-icon', 0, null);
-	    return info.get_symbolic_icon();
-        } catch(e if e instanceof Gio.IOErrorEnum) {
-            // return a generic icon
-            if (!this.file.is_native())
-                return new Gio.ThemedIcon({ name: 'folder-remote-symbolic' });
-            else
-                return new Gio.ThemedIcon({ name: 'folder-symbolic' });
+    update: function(config) {
+        let folder_ids_clone = this.folder_ids.slice();
+        for (let i = 0; i < config.folders.length; i++) {
+            let id = config.folders[i].id;
+            if (this.folder_ids.indexOf(id) !== -1) {
+                // 'id' is already in this.folders_ids, just update.
+                let position = folder_ids_clone.indexOf(id);
+                folder_ids_clone.splice(position, 1);
+            } else {
+                // Add 'id' to folder list.
+                let position = sortedIndex(this.folder_ids, id);
+                this.folder_ids.splice(position, 0, id);
+                let menuitem = new FolderMenuItem(config.folders[i]);
+                this.addMenuItem(menuitem, position);
+                this.folders.set(id, menuitem);
+                menuitem.connect('status-changed', Lang.bind(this, this.folder_changed));
+            }
+            this.folders.get(id).update(this.getBaseURI());
         }
+        for (let j = 0; j < folder_ids_clone.length; j++) {
+            let id = folder_ids_clone[j];
+            // Remove 'id' from folder list.
+            let position = folder_ids.indexOf(id);
+            folder_ids.splice(position, 1);
+            this.folders.get(id).destroy();
+            this.folders.delete(id);
+        }
+    },
+
+    folder_changed: function(folder) {
+        let states = this.folder_ids.map(Lang.bind(this, function(id){
+            return this.folders.get(id).state;
+        }));
+        let state;
+        if (states.indexOf("error") !== -1)
+            state = "error";
+        else if (states.indexOf("unknown") !== -1)
+            state = "unknown";
+        else if (states.indexOf("syncing") !== -1)
+            state = "syncing";
+        else
+            state = "idle";
+        if (state == this.state)
+            return;
+        this.state = state;
+        this.emit('status-changed');
+    },
+
+    clear_state: function() {
+        for (let i = 0; i < this.folder_ids.length; i++) {
+            let folder = this.folders.get(this.folder_ids[i]);
+            folder.set_state("idle");
+        }
+    },
+
+    get_states: function() {
+        let states = this.folder_ids.map(Lang.bind(this, function(id){
+            return this.folders.get(id).state;
+        }));
+        return states;
     },
 });
 
@@ -155,9 +222,10 @@ const FolderMenuItem = new Lang.Class({
     Extends: PopupMenu.PopupBaseMenuItem,
 
     _init: function (info) {
+        this._status = "";
         this.parent();
-
-        this._icon = new St.Icon({ gicon: info.icon,
+        this.info = info;
+        this._icon = new St.Icon({ gicon: this._getIcon(),
                                    style_class: 'popup-menu-icon' });
 	this.actor.add_child(this._icon);
 
@@ -165,18 +233,94 @@ const FolderMenuItem = new Lang.Class({
         this.actor.add_child(this._label);
         this.actor.label_actor = this._label;
 
-        this._uri = info.file.get_uri();
+        this._label_state = new St.Label({ style: 'color: gray; font-size: 80%;',
+                                           x_expand: true,
+                                           x_align: Clutter.ActorAlign.END,
+                                           y_align: Clutter.ActorAlign.CENTER });
+        this.actor.add_child(this._label_state);
+
+        this._file = Gio.File.new_for_path(info.path);
+    },
+
+    _getIcon: function() {
+        let file = Gio.File.new_for_path(this.info.path);
+        try {
+            let query_info = file.query_info('standard::symbolic-icon', 0, null);
+	    return query_info.get_symbolic_icon();
+        } catch(e if e instanceof Gio.IOErrorEnum) {
+            // return a generic icon
+            if (!file.is_native())
+                return new Gio.ThemedIcon({ name: 'folder-remote-symbolic' });
+            else
+                return new Gio.ThemedIcon({ name: 'folder-symbolic' });
+        }
     },
 
     activate: function(event) {
+        let uri = this._file.get_uri();
 	let launchContext = global.create_app_launch_context(event.get_time(), -1);
         try {
-            Gio.AppInfo.launch_default_for_uri(this._uri, launchContext);
+            Gio.AppInfo.launch_default_for_uri(uri, launchContext);
         } catch(e) {
-            Main.notifyError(_("Failed to launch URI \"%s\"").format(this._uri), e.message);
+            Main.notifyError(_("Failed to launch URI \"%s\"").format(uri), e.message);
         }
 
 	this.parent(event);
+    },
+
+    update : function(baseURI) {
+        if (this._soup_msg)
+            _httpSession.cancel_message(this._soup_msg, Soup.Status.CANCELLED);
+        let query_uri = baseURI + '/rest/db/status?folder=' + this.info.id;
+        this._soup_msg = Soup.Message.new('GET', query_uri);
+        _httpSession.queue_message(this._soup_msg, Lang.bind(this, this._folder_callback));
+    },
+
+    set_state : function(state) {
+        if (this.state == state)
+            return;
+        this.state = state;
+        if (state === "idle") {
+            this._label_state.set_text("");
+        } else if (state === "scanning") {
+            this._label_state.set_text("…");
+            this._label_state.set_style('color: gray; font-size: 80%;');
+        } else if (state === "syncing") {
+            this._label_state.set_text("🔄");
+            this._label_state.set_style('color: gray; font-size: 80%;');
+        } else if (state === "error") {
+            this._label_state.set_text("❗");
+            this._label_state.set_style('color: red; font-size: 90%;');
+        } else {
+            log("unknown syncthing state: " + state);
+            this._label_state.set_text("❓");
+            this._label_state.set_style('color: gray; font-size: 80%;');
+        }
+        this.emit('status-changed');        
+    },
+
+    _folder_callback : function(session, msg) {
+        this._soup_msg = null;
+        if (msg.status_code === Soup.Status.CANCELLED) {
+            // We cancelled the message.
+            return;
+        } else if (msg.status_code !== 200) {
+            // Failed to connect.
+            this.set_state("unknown");
+            return;
+        }
+        let data = msg.response_body.data;
+        let config = JSON.parse(data);
+        let state = config.state;
+        this.set_state(state);
+    },
+
+    destroy: function() {
+        if (this._soup_msg)
+            _httpSession.cancel_message(this._soup_msg);
+        this.state = "DESTROY";
+        this.emit('status-changed');
+        this.parent();
     },
 });
 
@@ -186,12 +330,18 @@ const SyncthingMenu = new Lang.Class({
     Extends: PanelMenu.Button,
 
     _init: function() {
-        this.parent(0.0, "Syncthing");
+        this.parent(0.0, "Syncthing", false);
+
+        let box = new St.BoxLayout();
+        this.actor.add_child(box);
 
         this._syncthingIcon = new St.Icon({ icon_name: 'syncthing-logo-symbolic',
                                           style_class: 'system-status-icon' });
+        box.add_child(this._syncthingIcon);
 
-        this.actor.add_child(this._syncthingIcon);
+        this.status_label = new St.Label({ style: 'font-size: 70%;',
+                                         y_align: Clutter.ActorAlign.CENTER });
+        box.add_child(this.status_label);
 
         this.item_switch = new PopupMenu.PopupSwitchMenuItem("Syncthing", false, null);
         this.item_switch.connect('activate', Lang.bind(this, this._onSwitch));
@@ -204,8 +354,9 @@ const SyncthingMenu = new Lang.Class({
 
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-        this.folderMenu = new PopupMenu.PopupMenuSection()
-        this.menu.addMenuItem(this.folderMenu);
+        this.folder_list = new FolderList(Lang.bind(this, this.getBaseURI));
+        this.menu.addMenuItem(this.folder_list);
+        this.folder_list.connect('status-changed', Lang.bind(this, this.on_status_changed));
 
         if (Settings.get_boolean('autoconfig')) {
             this._configparser = new ConfigParser();
@@ -215,19 +366,6 @@ const SyncthingMenu = new Lang.Class({
 
         this._updateMenu();
         this._timeoutManager = new TimeoutManager(1, 10, Lang.bind(this, this._updateMenu));
-    },
-
-    _updateFolderList : function(config) {
-        // First delete the old list.
-        this.folderMenu.removeAll();
-        // maybe it is better to destroy all children of this.folderMenu instead of
-        // calling removeAll() ?
-
-        for (let i = 0; i < config.folders.length; i++) {
-            let folderInfo = new FolderInfo(config.folders[i]);
-            let item = new FolderMenuItem(folderInfo);
-            this.folderMenu.addMenuItem(item);
-        }
     },
 
     _soup_connected : function(session, msg) {
@@ -241,10 +379,9 @@ const SyncthingMenu = new Lang.Class({
         }
         let data = msg.response_body.data;
         let config = JSON.parse(data);
-        // log(JSON.stringify(config, null, 2));
         if ('version' in config && 'folders' in config && 'devices' in config)
             // This seems to be a valid syncthing connection.
-            this._updateFolderList(config);
+            this.folder_list.update(config);
         else
             // Get new address from ConfigParser.
             this.baseURI = this._configparser.getURI();
@@ -299,6 +436,7 @@ const SyncthingMenu = new Lang.Class({
             let msg = Soup.Message.new('GET', config_uri);
             _httpSession.queue_message(msg, Lang.bind(this, this._soup_connected));
         } else if (state === 'inactive') {
+            this.folder_list.clear_state();
             this._syncthingIcon.icon_name = 'syncthing-off-symbolic';
             this.item_switch.setSensitive(true);
             this.item_switch.setToggleState(false);
@@ -309,6 +447,18 @@ const SyncthingMenu = new Lang.Class({
             let msg = Soup.Message.new('GET', config_uri);
             _httpSession.queue_message(msg, Lang.bind(this, this._soup_connected));
         }
+    },
+
+    on_status_changed : function(folder_list) {
+        let state = folder_list.state;
+        if (state == 'error')
+            this.status_label.text = "❗";
+        else if (state == 'unknown')
+            this.status_label.text = "❓";
+        else if (state == 'syncing')
+            this.status_label.text = "🔄";
+        else
+            this.status_label.text = "";
     },
 
     destroy: function() {
@@ -346,7 +496,7 @@ const TimeoutManager = new Lang.Class({
         this.func();
 
         if (this._current === this.end) {
-            return true;
+            return GLib.SOURCE_CONTINUE;
         }
         // exponential backoff
         this._current = this._current * 2;
@@ -354,7 +504,7 @@ const TimeoutManager = new Lang.Class({
             this._current = this.end;
         }
         this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this._current, Lang.bind(this, this._callback));
-        return false;
+        return GLib.SOURCE_REMOVE;
     },
 
     cancel: function() {

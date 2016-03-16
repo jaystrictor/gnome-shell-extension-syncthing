@@ -3,15 +3,17 @@
 ![ScreenShot](https://extensions.gnome.org/static/extension-data/screenshots/screenshot_989_IHHWFhj.png)
 
 This is a simple shell extension for Gnome 3.
-It features a small symbolic Syncthing icon that opens a menu with
+It displays a small symbolic Syncthing icon with the following features
+- automatic file parsing of `~/.config/syncthing/config.xml` to obtain configuration IP and port
+- status summary indication of Syncthing (`idle` / `syncing` / `error` / `unknown`)
 - an on/off switch for starting/stopping Syncthing
 - a button for opening the Web user interface (http://localhost:8384 or some other configurable URI)
-- a list of folders that are managed by Syncthing
+- a list of folders that are managed by Syncthing with status indication of each folder (`idle` / `syncing` / `error` / `unknown`)
 
 ## Requirements
 
 This extension uses the **user service** management facilities of systemd. The
-[Syncthing documentation](http://docs.syncthing.net/users/autostart.html#how-to-use-the-user-instance)
+[Syncthing documentation](https://docs.syncthing.net/users/autostart.html#how-to-set-up-a-user-service)
 has information about how to set this up. Please make sure that you have the
 user units installed correctly, otherwise the on/off switch will not work.
 

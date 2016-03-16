@@ -26,19 +26,6 @@ const Settings = Convenience.getSettings();
 const Sax = Me.imports.sax;
 
 
-// http://stackoverflow.com/a/21822316/3472468
-function sortedIndex(array, value) {
-    let low = 0,
-        high = array.length;
-
-    while (low < high) {
-        let mid = (low + high) >>> 1;
-        if (array[mid] < value) low = mid + 1;
-        else high = mid;
-    }
-    return low;
-}
-
 const ConfigParser = new Lang.Class({
     Name: 'ConfigParser',
 
@@ -47,17 +34,17 @@ const ConfigParser = new Lang.Class({
         this.address = null;
         this.tls = false;
 
-        this.parser = Sax.sax.parser(true);
-        this.parser.onerror = Lang.bind(this, this.onError);
-        this.parser.onopentag = Lang.bind(this, this.onOpenTag);
-        this.parser.ontext = Lang.bind(this, this.onText);
+        this._parser = Sax.sax.parser(true);
+        this._parser.onerror = Lang.bind(this, this._onError);
+        this._parser.onopentag = Lang.bind(this, this._onOpenTag);
+        this._parser.ontext = Lang.bind(this, this._onText);
     },
 
     run_async: function(callback) {
         try {
             let success, data, tag;
             [success, data, tag] = configfile.load_contents(null);
-            this.parser.write(data);
+            this._parser.write(data);
         } catch (e) {
             log("Failed to read " + config_filename + ": " + e);
         }
@@ -75,20 +62,20 @@ const ConfigParser = new Lang.Class({
         }
     },
 
-    onError: function(error) {
+    _onError: function(error) {
         log("Parsing " + this.filename + ": " + error);
         this.address = null;
         // We should abort the parsing process here.
     },
 
-    onText: function(text) {
+    _onText: function(text) {
         if (this.state === 'address') {
             this.address = text;
             this.state = 'end';
         }
     },
 
-    onOpenTag: function(tag) {
+    _onOpenTag: function(tag) {
         if (this.state === 'root' && tag.name === 'gui') {
             this.state = 'gui';
             if (tag.attributes['tls'].toUpperCase() == "TRUE")
@@ -118,16 +105,12 @@ const ConfigFileWatcher = new Lang.Class({
         this.callback = callback;
         this.running_state = 'ready';
         this.run_scheduled = false;
-        this.start_monitor();
-    },
-
-    start_monitor: function() {
         this.monitor = configfile.monitor_file(Gio.FileMonitorFlags.NONE, null);
-        this.monitor.connect('changed', Lang.bind(this, this.configfile_changed));
-        this.configfile_changed();
+        this.monitor.connect('changed', Lang.bind(this, this._configfileChanged));
+        this._configfileChanged();
     },
 
-    configfile_changed: function(monitor, file, other_file, event_type) {
+    _configfileChanged: function(monitor, file, other_file, event_type) {
         if (this.running_state === 'ready') {
             this.running_state = 'warmup';
             this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this.WARMUP_TIME, Lang.bind(this, this._nextState));
@@ -140,7 +123,7 @@ const ConfigFileWatcher = new Lang.Class({
         }
     },
 
-    run: function() {
+    _run: function() {
         let configParser = new ConfigParser();
         configParser.run_async(Lang.bind(this, this._onRunFinished));
     },
@@ -159,7 +142,7 @@ const ConfigFileWatcher = new Lang.Class({
         if (this.running_state === 'warmup') {
             this.running_state = 'running';
             this.run_scheduled = false;
-            this.run();
+            this._run();
         } else {
             // this.running_state === 'cooldown'
             this.running_state = 'ready';
@@ -199,12 +182,12 @@ const FolderList = new Lang.Class({
                 folder_ids_clone.splice(position, 1);
             } else {
                 // Add 'id' to folder list.
-                let position = sortedIndex(this.folder_ids, id);
+                let position = this._sortedIndex(id);
                 this.folder_ids.splice(position, 0, id);
                 let menuitem = new FolderMenuItem(config.folders[i]);
                 this.addMenuItem(menuitem, position);
                 this.folders.set(id, menuitem);
-                menuitem.connect('status-changed', Lang.bind(this, this.folder_changed));
+                menuitem.connect('status-changed', Lang.bind(this, this._folderChanged));
             }
             this.folders.get(id).update(baseURI);
         }
@@ -218,7 +201,21 @@ const FolderList = new Lang.Class({
         }
     },
 
-    folder_changed: function(folder) {
+    /* http://stackoverflow.com/a/21822316/3472468 */
+    _sortedIndex: function (value) {
+        let low = 0,
+            high = this.folder_ids.length;
+
+        while (low < high) {
+            let mid = (low + high) >>> 1;
+            if (this.folder_ids[mid] < value) low = mid + 1;
+            else high = mid;
+        }
+        return low;
+    },
+
+
+    _folderChanged: function(folder) {
         let states = this.folder_ids.map(Lang.bind(this, function(id){
             return this.folders.get(id).state;
         }));
@@ -237,10 +234,10 @@ const FolderList = new Lang.Class({
         this.emit('status-changed');
     },
 
-    clear_state: function() {
+    clearState: function() {
         for (let i = 0; i < this.folder_ids.length; i++) {
             let folder = this.folders.get(this.folder_ids[i]);
-            folder.set_state("idle");
+            folder.setState("idle");
         }
     },
 });
@@ -296,15 +293,15 @@ const FolderMenuItem = new Lang.Class({
 	this.parent(event);
     },
 
-    update : function(baseURI) {
+    update: function(baseURI) {
         if (this._soup_msg)
             _httpSession.cancel_message(this._soup_msg, Soup.Status.CANCELLED);
         let query_uri = baseURI + '/rest/db/status?folder=' + this.info.id;
         this._soup_msg = Soup.Message.new('GET', query_uri);
-        _httpSession.queue_message(this._soup_msg, Lang.bind(this, this._folder_callback));
+        _httpSession.queue_message(this._soup_msg, Lang.bind(this, this._folderReceived));
     },
 
-    set_state : function(state) {
+    setState: function(state) {
         if (this.state == state)
             return;
         this.state = state;
@@ -327,20 +324,20 @@ const FolderMenuItem = new Lang.Class({
         this.emit('status-changed');        
     },
 
-    _folder_callback : function(session, msg) {
+    _folderReceived: function(session, msg) {
         this._soup_msg = null;
         if (msg.status_code === Soup.Status.CANCELLED) {
             // We cancelled the message.
             return;
         } else if (msg.status_code !== 200) {
             // Failed to connect.
-            this.set_state("unknown");
+            this.setState("unknown");
             return;
         }
         let data = msg.response_body.data;
         let config = JSON.parse(data);
         let state = config.state;
-        this.set_state(state);
+        this.setState(state);
     },
 
     destroy: function() {
@@ -384,7 +381,7 @@ const SyncthingMenu = new Lang.Class({
 
         this.folder_list = new FolderList();
         this.menu.addMenuItem(this.folder_list);
-        this.folder_list.connect('status-changed', Lang.bind(this, this.on_status_changed));
+        this.folder_list.connect('status-changed', Lang.bind(this, this._onStatusChanged));
 
         Settings.connect('changed', Lang.bind(this, this._onSettingsChanged));
         this._onSettingsChanged();
@@ -415,8 +412,7 @@ const SyncthingMenu = new Lang.Class({
             this.baseURI = Settings.get_default_value('configuration-uri').unpack();
     },
 
-
-    _soup_connected: function(session, msg, baseURI) {
+    _configReceived: function(session, msg, baseURI) {
         if (msg.status_code !== 200)
             // Failed to connect.
             // Do not update (i.e. delete) the folder list.
@@ -428,7 +424,7 @@ const SyncthingMenu = new Lang.Class({
             this.folder_list.update(baseURI, config);
     },
 
-    _onConfig : function(actor, event) {
+    _onConfig: function(actor, event) {
         let launchContext = global.create_app_launch_context(event.get_time(), -1);
         try {
             Gio.AppInfo.launch_default_for_uri(this.baseURI, launchContext);
@@ -437,7 +433,7 @@ const SyncthingMenu = new Lang.Class({
         }
     },
 
-    _onSwitch : function(actor, event) {
+    _onSwitch: function(actor, event) {
         if (actor.state) {
             let argv = 'systemctl --user start syncthing.service';
             GLib.spawn_sync(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
@@ -450,14 +446,14 @@ const SyncthingMenu = new Lang.Class({
         this._updateMenu();
     },
 
-    getSyncthingState : function() {
+    _getSyncthingState: function() {
         let argv = 'systemctl --user is-active syncthing.service';
         let result = GLib.spawn_sync(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
         return result[1].toString().trim();
     },
 
-    _updateMenu : function() {
-        let state = this.getSyncthingState();
+    _updateMenu: function() {
+        let state = this._getSyncthingState();
         // The current syncthing config is fetched from 'http://localhost:8384/rest/system/config' or similar
         let config_uri = this.baseURI + '/rest/system/config';
         if (state === 'active') {
@@ -466,9 +462,9 @@ const SyncthingMenu = new Lang.Class({
             this.item_switch.setToggleState(true);
             this.item_config.setSensitive(true);
             let msg = Soup.Message.new('GET', config_uri);
-            _httpSession.queue_message(msg, Lang.bind(this, this._soup_connected, this.baseURI));
+            _httpSession.queue_message(msg, Lang.bind(this, this._configReceived, this.baseURI));
         } else if (state === 'inactive') {
-            this.folder_list.clear_state();
+            this.folder_list.clearState();
             this._syncthingIcon.icon_name = 'syncthing-off-symbolic';
             this.item_switch.setSensitive(true);
             this.item_switch.setToggleState(false);
@@ -477,11 +473,11 @@ const SyncthingMenu = new Lang.Class({
             this.item_switch.setSensitive(false);
             this.item_config.setSensitive(true);
             let msg = Soup.Message.new('GET', config_uri);
-            _httpSession.queue_message(msg, Lang.bind(this, this._soup_connected, this.baseURI));
+            _httpSession.queue_message(msg, Lang.bind(this, this._configReceived, this.baseURI));
         }
     },
 
-    on_status_changed : function(folder_list) {
+    _onStatusChanged: function(folder_list) {
         let state = folder_list.state;
         if (state == 'error')
             this.status_label.text = "❗";

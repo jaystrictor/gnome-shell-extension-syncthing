@@ -43,42 +43,6 @@ const ConfigParser = new Lang.Class({
     Name: 'ConfigParser',
 
     _init: function() {
-        this.running_state = 'ready';
-        this.run_scheduled = false;
-        this.start_monitor();
-    },
-
-    start_monitor: function() {
-        this.monitor = configfile.monitor_file(Gio.FileMonitorFlags.NONE, null);
-        this.monitor.connect('changed', Lang.bind(this, this.configfile_changed));
-        this.configfile_changed();
-    },
-
-    configfile_changed: function(monitor, file, other_file, event_type) {
-        if (this.running_state === 'ready') {
-            this.running_state = 'running';
-            this.run();
-        } else if (this.running_state === 'cooldown') {
-            this.run_scheduled = true;
-        } else {
-            // running_state === 'running'
-            // Nothing to do here, as we run synchronously.
-            // Should we run the parser in a seperate thread?
-        }
-    },
-
-    _stop_cooldown: function() {
-        this.running_state = 'ready';
-        if (this.run_scheduled) {
-            this.run_scheduled = false;
-            this.running_state = 'running';
-            this.run();
-        }
-        this._source = null;
-        return GLib.SOURCE_REMOVE;
-    },
-
-    run: function() {
         this.state = 'root';
         this.address = null;
         this.tls = false;
@@ -87,7 +51,9 @@ const ConfigParser = new Lang.Class({
         this.parser.onerror = Lang.bind(this, this.onError);
         this.parser.onopentag = Lang.bind(this, this.onOpenTag);
         this.parser.ontext = Lang.bind(this, this.onText);
+    },
 
+    run_async: function(callback) {
         try {
             let success, data, tag;
             [success, data, tag] = configfile.load_contents(null);
@@ -95,20 +61,18 @@ const ConfigParser = new Lang.Class({
         } catch (e) {
             log("Failed to read " + config_filename + ": " + e);
         }
-
-        this.running_state = 'cooldown';
-        // Stop cooldown after 10 seconds.
-        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, 10, Lang.bind(this, this._stop_cooldown));
+        callback(this._getResult());
     },
 
-    getURI: function() {
+    _getResult: function() {
         if (this.address) {
             if (this.tls)
                 return "https://" + this.address;
             else
                 return "http://" + this.address;
+        } else {
+            return null;
         }
-        return Settings.get_default_value('configuration-uri').unpack();
     },
 
     onError: function(error) {
@@ -135,6 +99,77 @@ const ConfigParser = new Lang.Class({
             this.state = 'address';
         }
     },
+});
+
+
+const ConfigFileWatcher = new Lang.Class({
+    Name: 'ConfigFileWatcher',
+
+    /* File Watcher with 4 internal states:
+       ready -> warmup -> running -> cooldown
+         ^                              |
+         --------------------------------
+    */
+    // Stop warmup after 1 second, cooldown after 10 seconds.
+    WARMUP_TIME: 1,
+    COOLDOWN_TIME: 10,
+
+    _init: function(callback) {
+        this.callback = callback;
+        this.running_state = 'ready';
+        this.run_scheduled = false;
+        this.start_monitor();
+    },
+
+    start_monitor: function() {
+        this.monitor = configfile.monitor_file(Gio.FileMonitorFlags.NONE, null);
+        this.monitor.connect('changed', Lang.bind(this, this.configfile_changed));
+        this.configfile_changed();
+    },
+
+    configfile_changed: function(monitor, file, other_file, event_type) {
+        if (this.running_state === 'ready') {
+            this.running_state = 'warmup';
+            this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this.WARMUP_TIME, Lang.bind(this, this._nextState));
+        } else if (this.running_state === 'warmup') {
+            // Nothing to do here.
+        } else if (this.running_state === 'running') {
+            this.run_scheduled = true;
+        } else if (this.running_state === 'cooldown') {
+            this.run_scheduled = true;
+        }
+    },
+
+    run: function() {
+        let configParser = new ConfigParser();
+        configParser.run_async(Lang.bind(this, this._onRunFinished));
+    },
+
+    _onRunFinished: function(result) {
+        this.running_state = 'cooldown';
+        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this.COOLDOWN_TIME, Lang.bind(this, this._nextState));
+        if (result != this.uri) {
+            this.uri = result;
+            this.callback(this.uri);
+        }
+    },
+
+    _nextState: function() {
+        this._source = null;
+        if (this.running_state === 'warmup') {
+            this.running_state = 'running';
+            this.run_scheduled = false;
+            this.run();
+        } else {
+            // this.running_state === 'cooldown'
+            this.running_state = 'ready';
+            if (this.run_scheduled) {
+                this.running_state = 'warmup';
+                this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, WARMUP_TIME, Lang.bind(this, this._nextState));
+            }
+        }
+        return GLib.SOURCE_REMOVE;
+    },
 
     destroy: function() {
         if (this._source)
@@ -142,19 +177,19 @@ const ConfigParser = new Lang.Class({
     },
 });
 
+
 const FolderList = new Lang.Class({
     Name: 'FolderList',
     Extends: PopupMenu.PopupMenuSection,
 
-    _init: function(getBaseURI) {
+    _init: function() {
         this.parent();
         this.folder_ids = [];
         this.folders = new Map();
-        this.getBaseURI = getBaseURI;
         this.state = "idle";
     },
 
-    update: function(config) {
+    update: function(baseURI, config) {
         let folder_ids_clone = this.folder_ids.slice();
         for (let i = 0; i < config.folders.length; i++) {
             let id = config.folders[i].id;
@@ -171,7 +206,7 @@ const FolderList = new Lang.Class({
                 this.folders.set(id, menuitem);
                 menuitem.connect('status-changed', Lang.bind(this, this.folder_changed));
             }
-            this.folders.get(id).update(this.getBaseURI());
+            this.folders.get(id).update(baseURI);
         }
         for (let j = 0; j < folder_ids_clone.length; j++) {
             let id = folder_ids_clone[j];
@@ -207,13 +242,6 @@ const FolderList = new Lang.Class({
             let folder = this.folders.get(this.folder_ids[i]);
             folder.set_state("idle");
         }
-    },
-
-    get_states: function() {
-        let states = this.folder_ids.map(Lang.bind(this, function(id){
-            return this.folders.get(id).state;
-        }));
-        return states;
     },
 });
 
@@ -354,44 +382,56 @@ const SyncthingMenu = new Lang.Class({
 
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-        this.folder_list = new FolderList(Lang.bind(this, this.getBaseURI));
+        this.folder_list = new FolderList();
         this.menu.addMenuItem(this.folder_list);
         this.folder_list.connect('status-changed', Lang.bind(this, this.on_status_changed));
 
-        if (Settings.get_boolean('autoconfig')) {
-            this._configparser = new ConfigParser();
-            // Get new address from ConfigParser.
-            this.baseURI = this._configparser.getURI();
-        }
+        Settings.connect('changed', Lang.bind(this, this._onSettingsChanged));
+        this._onSettingsChanged();
 
         this._updateMenu();
         this._timeoutManager = new TimeoutManager(1, 10, Lang.bind(this, this._updateMenu));
     },
 
-    _soup_connected : function(session, msg) {
-        if (msg.status_code !== 200) {
-            // Failed to connect.
-            if (Settings.get_boolean('autoconfig')) {
-                // Get new address from ConfigParser.
-                this.baseURI = this._configparser.getURI();
+    _onSettingsChanged: function(settings, key) {
+        if (Settings.get_boolean('autoconfig')) {
+            if (! this._configFileWatcher) {
+                this.baseURI = Settings.get_default_value('configuration-uri').unpack();
+                this._configFileWatcher = new ConfigFileWatcher(Lang.bind(this, this._onAutoURIChanged));
             }
-            return;
+        } else {
+            if (this._configFileWatcher) {
+                this._configFileWatcher.destroy();
+                this._configFileWatcher = null;
+            }
+            this.baseURI = Settings.get_string('configuration-uri');
         }
+    },
+
+    _onAutoURIChanged: function(uri) {
+        if (uri)
+            this.baseURI = uri;
+        else
+            this.baseURI = Settings.get_default_value('configuration-uri').unpack();
+    },
+
+
+    _soup_connected: function(session, msg, baseURI) {
+        if (msg.status_code !== 200)
+            // Failed to connect.
+            // Do not update (i.e. delete) the folder list.
+            return;
         let data = msg.response_body.data;
         let config = JSON.parse(data);
         if ('version' in config && 'folders' in config && 'devices' in config)
             // This seems to be a valid syncthing connection.
-            this.folder_list.update(config);
-        else
-            // Get new address from ConfigParser.
-            this.baseURI = this._configparser.getURI();
+            this.folder_list.update(baseURI, config);
     },
 
     _onConfig : function(actor, event) {
-        let uri = this.getBaseURI();
         let launchContext = global.create_app_launch_context(event.get_time(), -1);
         try {
-            Gio.AppInfo.launch_default_for_uri(uri, launchContext);
+            Gio.AppInfo.launch_default_for_uri(this.baseURI, launchContext);
         } catch(e) {
             Main.notifyError(_("Failed to launch URI \"%s\"").format(uri), e.message);
         }
@@ -410,14 +450,6 @@ const SyncthingMenu = new Lang.Class({
         this._updateMenu();
     },
 
-    getBaseURI : function() {
-        if (Settings.get_boolean('autoconfig')) {
-            return this.baseURI;
-        } else {
-            return Settings.get_string('configuration-uri');
-        }
-    },
-
     getSyncthingState : function() {
         let argv = 'systemctl --user is-active syncthing.service';
         let result = GLib.spawn_sync(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
@@ -427,14 +459,14 @@ const SyncthingMenu = new Lang.Class({
     _updateMenu : function() {
         let state = this.getSyncthingState();
         // The current syncthing config is fetched from 'http://localhost:8384/rest/system/config' or similar
-        let config_uri = this.getBaseURI() + '/rest/system/config';
+        let config_uri = this.baseURI + '/rest/system/config';
         if (state === 'active') {
             this._syncthingIcon.icon_name = 'syncthing-logo-symbolic';
             this.item_switch.setSensitive(true);
             this.item_switch.setToggleState(true);
             this.item_config.setSensitive(true);
             let msg = Soup.Message.new('GET', config_uri);
-            _httpSession.queue_message(msg, Lang.bind(this, this._soup_connected));
+            _httpSession.queue_message(msg, Lang.bind(this, this._soup_connected, this.baseURI));
         } else if (state === 'inactive') {
             this.folder_list.clear_state();
             this._syncthingIcon.icon_name = 'syncthing-off-symbolic';
@@ -445,7 +477,7 @@ const SyncthingMenu = new Lang.Class({
             this.item_switch.setSensitive(false);
             this.item_config.setSensitive(true);
             let msg = Soup.Message.new('GET', config_uri);
-            _httpSession.queue_message(msg, Lang.bind(this, this._soup_connected));
+            _httpSession.queue_message(msg, Lang.bind(this, this._soup_connected, this.baseURI));
         }
     },
 
@@ -463,8 +495,8 @@ const SyncthingMenu = new Lang.Class({
 
     destroy: function() {
         this._timeoutManager.cancel();
-        if (this._configparser)
-            this._configparser.destroy();
+        if (this._configwatcher)
+            this._configwatcher.destroy();
         this.parent();
     },
 });

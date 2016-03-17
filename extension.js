@@ -419,7 +419,7 @@ const SyncthingMenu = new Lang.Class({
         if (msg.status_code !== 200) {
             // Failed to connect.
             this.folder_list.clearState();
-            // Do not update (i.e. delete) the folders of the folder list.
+            // Do not update the folders of the folder list.
             return;
         }
         let data = msg.response_body.data;
@@ -441,20 +441,32 @@ const SyncthingMenu = new Lang.Class({
     _onSwitch: function(actor, event) {
         if (actor.state) {
             let argv = 'systemctl --user start syncthing.service';
-            GLib.spawn_sync(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
+            let [ok, pid] = GLib.spawn_async(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
+            GLib.spawn_close_pid(pid);
             this._timeoutManager.changeTimeout(1, 10);
         } else {
             let argv = 'systemctl --user stop syncthing.service';
-            GLib.spawn_sync(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
+            let [ok, pid] = GLib.spawn_async(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
+            GLib.spawn_close_pid(pid);
             this._timeoutManager.changeTimeout(10, 10);
         }
         this._updateMenu();
     },
 
     _getSyncthingState: function() {
+        if (this._childSource)
+            return;
         let argv = 'systemctl --user is-active syncthing.service';
-        let result = GLib.spawn_sync(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
-        this._daemon_state = result[1].toString().trim();
+        let flags = GLib.SpawnFlags.DO_NOT_REAP_CHILD | GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.STDOUT_TO_DEV_NULL;
+        let [ok, pid, in_fd, out_fd, err_fd]  = GLib.spawn_async(null, argv.split(' '), null, flags, null);
+        this._childSource = GLib.child_watch_add(GLib.PRIORITY_DEFAULT_IDLE, pid, Lang.bind(this, this._onSyncthingState));
+    },
+
+    _onSyncthingState: function(pid, status) {
+        GLib.Source.remove(this._childSource);
+        this._childSource = null;
+        GLib.spawn_close_pid(pid);
+        this._daemonRunning = (status === 0);
         this._onStatusChanged(this.folder_list);
     },
 
@@ -462,25 +474,15 @@ const SyncthingMenu = new Lang.Class({
         this._getSyncthingState();
         // The current syncthing config is fetched from 'http://localhost:8384/rest/system/config' or similar
         let config_uri = this.baseURI + '/rest/system/config';
-        if (this._daemon_state === 'active') {
-            this.item_switch.setSensitive(true);
-            this.item_switch.setToggleState(true);
-            this.item_config.setSensitive(true);
-        } else if (this._daemon_state === 'inactive') {
-            this.item_switch.setSensitive(true);
-            this.item_switch.setToggleState(false);
-            this.item_config.setSensitive(false);
-        } else { // (this._daemon_state === 'unknown')
-            this.item_switch.setSensitive(false);
-            this.item_config.setSensitive(true);
-        }
         let msg = Soup.Message.new('GET', config_uri);
         _httpSession.queue_message(msg, Lang.bind(this, this._configReceived, this.baseURI));
     },
 
     _onStatusChanged: function(folder_list) {
-        if (this._daemon_state === 'active') {
+        if (this._daemonRunning) {
             //this._syncthingIcon.icon_name = 'syncthing-logo-symbolic';
+            this.item_switch.setToggleState(true);
+            this.item_config.setSensitive(true);
             let state = folder_list.state;
             if (state === 'error')
                 this.status_label.text = "❗";
@@ -492,12 +494,16 @@ const SyncthingMenu = new Lang.Class({
                 this.status_label.text = "";
         } else {
             //this._syncthingIcon.icon_name = 'syncthing-off-symbolic';
+            this.item_switch.setToggleState(false);
+            this.item_config.setSensitive(false);
             this.status_label.text = "⏹";
         }
     },
 
     destroy: function() {
         this._timeoutManager.cancel();
+        if (this._childSource)
+            GLib.Source.remove(this._childSource);
         if (this._configwatcher)
             this._configwatcher.destroy();
         this.parent();
@@ -509,7 +515,7 @@ const TimeoutManager = new Lang.Class({
     Name: 'TimeoutManager',
 
     // The TimeoutManager starts with a timespan of start seconds,
-    // after which the function func is called and the timout
+    // after which the function func is called and the timeout
     // is exponentially expanded to 2*start, 2*2*start, etc. seconds.
     // When the timeout overflows end seconds,
     // it is set to the final value of end seconds.

@@ -454,27 +454,23 @@ const SyncthingMenu = new Lang.Class({
     _getSyncthingState: function() {
         let argv = 'systemctl --user is-active syncthing.service';
         let result = GLib.spawn_sync(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
-        return result[1].toString().trim();
+        this._daemon_state = result[1].toString().trim();
+        this._onStatusChanged(this.folder_list);
     },
 
     _updateMenu: function() {
-        let state = this._getSyncthingState();
+        this._getSyncthingState();
         // The current syncthing config is fetched from 'http://localhost:8384/rest/system/config' or similar
         let config_uri = this.baseURI + '/rest/system/config';
-        if (state === 'active') {
-            this._syncthingIcon.icon_name = 'syncthing-logo-symbolic';
-            this.status_label.show();
+        if (this._daemon_state === 'active') {
             this.item_switch.setSensitive(true);
             this.item_switch.setToggleState(true);
             this.item_config.setSensitive(true);
-        } else if (state === 'inactive') {
-            this._syncthingIcon.icon_name = 'syncthing-off-symbolic';
-            this.status_label.hide();
+        } else if (this._daemon_state === 'inactive') {
             this.item_switch.setSensitive(true);
             this.item_switch.setToggleState(false);
             this.item_config.setSensitive(false);
-        } else { // (state === 'unknown')
-            this.status_label.show();
+        } else { // (this._daemon_state === 'unknown')
             this.item_switch.setSensitive(false);
             this.item_config.setSensitive(true);
         }
@@ -483,15 +479,21 @@ const SyncthingMenu = new Lang.Class({
     },
 
     _onStatusChanged: function(folder_list) {
-        let state = folder_list.state;
-        if (state == 'error')
-            this.status_label.text = "❗";
-        else if (state == 'unknown')
-            this.status_label.text = "❓";
-        else if (state == 'syncing')
-            this.status_label.text = "🔄";
-        else
-            this.status_label.text = "";
+        if (this._daemon_state === 'active') {
+            //this._syncthingIcon.icon_name = 'syncthing-logo-symbolic';
+            let state = folder_list.state;
+            if (state === 'error')
+                this.status_label.text = "❗";
+            else if (state === 'unknown')
+                this.status_label.text = "❓";
+            else if (state === 'syncing')
+                this.status_label.text = "🔄";
+            else
+                this.status_label.text = "";
+        } else {
+            //this._syncthingIcon.icon_name = 'syncthing-off-symbolic';
+            this.status_label.text = "⏹";
+        }
     },
 
     destroy: function() {

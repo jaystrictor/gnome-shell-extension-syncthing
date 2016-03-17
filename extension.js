@@ -237,7 +237,7 @@ const FolderList = new Lang.Class({
     clearState: function() {
         for (let i = 0; i < this.folder_ids.length; i++) {
             let folder = this.folders.get(this.folder_ids[i]);
-            folder.setState("idle");
+            folder.setState("unknown");
         }
     },
 });
@@ -316,6 +316,9 @@ const FolderMenuItem = new Lang.Class({
         } else if (state === "error") {
             this._label_state.set_text("❗");
             this._label_state.set_style('color: red; font-size: 90%;');
+        } else if (state === "unknown") {
+            this._label_state.set_text("❓");
+            this._label_state.set_style('color: gray; font-size: 80%;');
         } else {
             log("unknown syncthing state: " + state);
             this._label_state.set_text("❓");
@@ -413,10 +416,12 @@ const SyncthingMenu = new Lang.Class({
     },
 
     _configReceived: function(session, msg, baseURI) {
-        if (msg.status_code !== 200)
+        if (msg.status_code !== 200) {
             // Failed to connect.
-            // Do not update (i.e. delete) the folder list.
+            this.folder_list.clearState();
+            // Do not update (i.e. delete) the folders of the folder list.
             return;
+        }
         let data = msg.response_body.data;
         let config = JSON.parse(data);
         if ('version' in config && 'folders' in config && 'devices' in config)
@@ -458,18 +463,20 @@ const SyncthingMenu = new Lang.Class({
         let config_uri = this.baseURI + '/rest/system/config';
         if (state === 'active') {
             this._syncthingIcon.icon_name = 'syncthing-logo-symbolic';
+            this.status_label.show();
             this.item_switch.setSensitive(true);
             this.item_switch.setToggleState(true);
             this.item_config.setSensitive(true);
             let msg = Soup.Message.new('GET', config_uri);
             _httpSession.queue_message(msg, Lang.bind(this, this._configReceived, this.baseURI));
         } else if (state === 'inactive') {
-            this.folder_list.clearState();
             this._syncthingIcon.icon_name = 'syncthing-off-symbolic';
+            this.status_label.hide();
             this.item_switch.setSensitive(true);
             this.item_switch.setToggleState(false);
             this.item_config.setSensitive(false);
         } else { // (state === 'unknown')
+            this.status_label.show();
             this.item_switch.setSensitive(false);
             this.item_config.setSensitive(true);
             let msg = Soup.Message.new('GET', config_uri);

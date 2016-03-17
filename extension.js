@@ -237,7 +237,7 @@ const FolderList = new Lang.Class({
     clearState: function() {
         for (let i = 0; i < this.folder_ids.length; i++) {
             let folder = this.folders.get(this.folder_ids[i]);
-            folder.setState("unknown");
+            folder.setState("idle");
         }
     },
 });
@@ -467,8 +467,6 @@ const SyncthingMenu = new Lang.Class({
             this.item_switch.setSensitive(true);
             this.item_switch.setToggleState(true);
             this.item_config.setSensitive(true);
-            let msg = Soup.Message.new('GET', config_uri);
-            _httpSession.queue_message(msg, Lang.bind(this, this._configReceived, this.baseURI));
         } else if (state === 'inactive') {
             this._syncthingIcon.icon_name = 'syncthing-off-symbolic';
             this.status_label.hide();
@@ -479,9 +477,9 @@ const SyncthingMenu = new Lang.Class({
             this.status_label.show();
             this.item_switch.setSensitive(false);
             this.item_config.setSensitive(true);
-            let msg = Soup.Message.new('GET', config_uri);
-            _httpSession.queue_message(msg, Lang.bind(this, this._configReceived, this.baseURI));
         }
+        let msg = Soup.Message.new('GET', config_uri);
+        _httpSession.queue_message(msg, Lang.bind(this, this._configReceived, this.baseURI));
     },
 
     _onStatusChanged: function(folder_list) {

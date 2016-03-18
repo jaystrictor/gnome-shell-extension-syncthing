@@ -40,7 +40,7 @@ const ConfigParser = new Lang.Class({
         this._parser.ontext = Lang.bind(this, this._onText);
     },
 
-    run_async: function(callback) {
+    run_sync: function(callback) {
         try {
             let success, data, tag;
             [success, data, tag] = configfile.load_contents(null);
@@ -125,7 +125,7 @@ const ConfigFileWatcher = new Lang.Class({
 
     _run: function() {
         let configParser = new ConfigParser();
-        configParser.run_async(Lang.bind(this, this._onRunFinished));
+        configParser.run_sync(Lang.bind(this, this._onRunFinished));
     },
 
     _onRunFinished: function(result) {

@@ -46,7 +46,7 @@ const ConfigParser = new Lang.Class({
             [success, data, tag] = configfile.load_contents(null);
             this._parser.write(data);
         } catch (e) {
-            log("Failed to read " + config_filename + ": " + e);
+            log("Failed to read " + config_filename + ": " + e.message);
         }
         callback(this._getResult());
     },
@@ -63,7 +63,7 @@ const ConfigParser = new Lang.Class({
     },
 
     _onError: function(error) {
-        log("Parsing " + this.filename + ": " + error);
+        log("Error parsing " + this.filename + ": " + error);
         this.address = null;
         // We should abort the parsing process here.
     },

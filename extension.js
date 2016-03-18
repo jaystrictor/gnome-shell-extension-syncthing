@@ -252,7 +252,7 @@ const FolderMenuItem = new Lang.Class({
         this.info = info;
         this._icon = new St.Icon({ gicon: this._getIcon(),
                                    style_class: 'popup-menu-icon' });
-	this.actor.add_child(this._icon);
+        this.actor.add_child(this._icon);
 
         this._label = new St.Label({ text: info.id });
         this.actor.add_child(this._label);
@@ -271,7 +271,7 @@ const FolderMenuItem = new Lang.Class({
         let file = Gio.File.new_for_path(this.info.path);
         try {
             let query_info = file.query_info('standard::symbolic-icon', 0, null);
-	    return query_info.get_symbolic_icon();
+            return query_info.get_symbolic_icon();
         } catch(e if e instanceof Gio.IOErrorEnum) {
             // return a generic icon
             if (!file.is_native())
@@ -283,14 +283,14 @@ const FolderMenuItem = new Lang.Class({
 
     activate: function(event) {
         let uri = this._file.get_uri();
-	let launchContext = global.create_app_launch_context(event.get_time(), -1);
+        let launchContext = global.create_app_launch_context(event.get_time(), -1);
         try {
             Gio.AppInfo.launch_default_for_uri(uri, launchContext);
         } catch(e) {
             Main.notifyError(_("Failed to launch URI \"%s\"").format(uri), e.message);
         }
 
-	this.parent(event);
+        this.parent(event);
     },
 
     update: function(baseURI) {

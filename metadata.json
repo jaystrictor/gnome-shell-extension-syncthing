@@ -1,7 +1,7 @@
 {
     "shell-version": ["3.16", "3.18"],
     "uuid": "syncthingicon@jay.strict@posteo.de",
-    "url": "https://github.com/jaystrictor/gnome-shell-extension-syncthing.git",
+    "url": "https://github.com/jaystrictor/gnome-shell-extension-syncthing",
     "name": "Syncthing Icon",
     "description": "Display Syncthing Icon in Top Bar",
     "settings-schema": "org.gnome.shell.extensions.syncthing"

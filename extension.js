@@ -175,30 +175,39 @@ const FolderList = new Lang.Class({
     update: function(baseURI, config) {
         let folder_ids_clone = this.folder_ids.slice();
         for (let i = 0; i < config.folders.length; i++) {
-            let id = config.folders[i].id;
+            let folder_config = config.folders[i];
+            let id = folder_config.id;
             if (this.folder_ids.indexOf(id) !== -1) {
                 // 'id' is already in this.folders_ids, just update.
                 let position = folder_ids_clone.indexOf(id);
                 folder_ids_clone.splice(position, 1);
             } else {
                 // Add 'id' to folder list.
-                let position = this._sortedIndex(id);
-                this.folder_ids.splice(position, 0, id);
-                let menuitem = new FolderMenuItem(config.folders[i]);
-                this.addMenuItem(menuitem, position);
-                this.folders.set(id, menuitem);
-                menuitem.connect('status-changed', Lang.bind(this, this._folderChanged));
+                this._addFolder(id, folder_config);
             }
             this.folders.get(id).update(baseURI);
         }
         for (let j = 0; j < folder_ids_clone.length; j++) {
             let id = folder_ids_clone[j];
             // Remove 'id' from folder list.
-            let position = folder_ids.indexOf(id);
-            folder_ids.splice(position, 1);
-            this.folders.get(id).destroy();
-            this.folders.delete(id);
+            this._removeFolder(id);
         }
+    },
+
+    _addFolder: function(id, folder_config) {
+        let position = this._sortedIndex(id);
+        this.folder_ids.splice(position, 0, id);
+        let menuitem = new FolderMenuItem(folder_config);
+        this.addMenuItem(menuitem, position);
+        this.folders.set(id, menuitem);
+        menuitem.connect('status-changed', Lang.bind(this, this._folderChanged));
+    },
+
+    _removeFolder: function(id) {
+        let position = this.folder_ids.indexOf(id);
+        this.folder_ids.splice(position, 1);
+        this.folders.get(id).destroy();
+        this.folders.delete(id);
     },
 
     /* http://stackoverflow.com/a/21822316/3472468 */

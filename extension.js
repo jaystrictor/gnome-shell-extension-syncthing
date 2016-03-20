@@ -345,7 +345,7 @@ const FolderMenuItem = new Lang.Class({
 
     destroy: function() {
         if (this._soup_msg)
-            _httpSession.cancel_message(this._soup_msg);
+            _httpSession.cancel_message(this._soup_msg, Soup.Status.CANCELLED);
         this.state = "DESTROY";
         this.emit('status-changed');
         this.parent();

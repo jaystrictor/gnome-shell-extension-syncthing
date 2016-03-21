@@ -310,17 +310,16 @@ const FolderMenuItem = new Lang.Class({
         _httpSession.queue_message(this._soup_msg, Lang.bind(this, this._folderReceived));
     },
 
-    setState: function(state) {
-        if (this.state == state)
-            return;
-        this.state = state;
+    setState: function(model) {
+        let state = model.state;
         if (state === "idle") {
             this._label_state.set_text("");
         } else if (state === "scanning") {
             this._label_state.set_text("…");
             this._label_state.set_style('color: gray; font-size: 80%;');
         } else if (state === "syncing") {
-            this._label_state.set_text("🔄");
+            let pct = this._syncPercentage(model);
+            this._label_state.set_text("%d %%".format(pct));
             this._label_state.set_style('color: gray; font-size: 80%;');
         } else if (state === "error") {
             this._label_state.set_text("❗");
@@ -333,7 +332,6 @@ const FolderMenuItem = new Lang.Class({
             this._label_state.set_text("❓");
             this._label_state.set_style('color: gray; font-size: 80%;');
         }
-        this.emit('status-changed');        
     },
 
     _folderReceived: function(session, msg) {
@@ -347,9 +345,19 @@ const FolderMenuItem = new Lang.Class({
             return;
         }
         let data = msg.response_body.data;
-        let config = JSON.parse(data);
-        let state = config.state;
-        this.setState(state);
+        let model = JSON.parse(data);
+        this.setState(model);
+        let state = model.state;
+        if (this.state !== state) {
+            this.state = state;
+            this.emit('status-changed');
+        }
+    },
+
+    _syncPercentage: function(model) {
+        if (model.globalBytes === 0)
+            return 100;
+        return Math.floor(100 * model.inSyncBytes / model.globalBytes);
     },
 
     destroy: function() {

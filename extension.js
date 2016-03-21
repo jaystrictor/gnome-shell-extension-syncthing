@@ -458,6 +458,9 @@ const SyncthingMenu = new Lang.Class({
             let [ok, pid] = GLib.spawn_async(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
             GLib.spawn_close_pid(pid);
             this._timeoutManager.changeTimeout(10, 10);
+            // To prevent icon flickering we set _daemonRunning=false prematurely.
+            // Even if this proves to be wrong in the following _updateMenu(), we don't do any harm.
+            this._daemonRunning = false;
         }
         this._updateMenu();
     },

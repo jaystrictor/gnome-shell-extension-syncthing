@@ -315,21 +315,21 @@ const FolderMenuItem = new Lang.Class({
         if (state === "idle") {
             this._label_state.set_text("");
         } else if (state === "scanning") {
-            this._label_state.set_text("…");
+            this._label_state.set_text("\u2026"); // …
             this._label_state.set_style('color: gray; font-size: 80%;');
         } else if (state === "syncing") {
             let pct = this._syncPercentage(model);
-            this._label_state.set_text("%d %%".format(pct));
+            this._label_state.set_text("%d\u2009%%".format(pct));
             this._label_state.set_style('color: gray; font-size: 80%;');
         } else if (state === "error") {
-            this._label_state.set_text("❗");
+            this._label_state.set_text("\u2757"); // ❗
             this._label_state.set_style('color: red; font-size: 90%;');
         } else if (state === "unknown") {
-            this._label_state.set_text("❓");
+            this._label_state.set_text("\u2753"); // ❓
             this._label_state.set_style('color: gray; font-size: 80%;');
         } else {
             log("unknown syncthing state: " + state);
-            this._label_state.set_text("❓");
+            this._label_state.set_text("\u2753"); // ❓
             this._label_state.set_style('color: gray; font-size: 80%;');
         }
     },
@@ -505,18 +505,18 @@ const SyncthingMenu = new Lang.Class({
             this.item_config.setSensitive(true);
             let state = folder_list.state;
             if (state === 'error')
-                this.status_label.text = "❗";
+                this.status_label.text = "\u2757"; // ❗
             else if (state === 'unknown')
-                this.status_label.text = "❓";
+                this.status_label.text = "\u2753"; // ❓
             else if (state === 'syncing')
-                this.status_label.text = "🔄";
+                this.status_label.text = "🔄"; // \u{1f504}
             else
                 this.status_label.text = "";
         } else {
             //this._syncthingIcon.icon_name = 'syncthing-off-symbolic';
             this.item_switch.setToggleState(false);
             this.item_config.setSensitive(false);
-            this.status_label.text = "⏹";
+            this.status_label.text = "\u23f9"; // ⏹
         }
     },
 

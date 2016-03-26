@@ -2,13 +2,23 @@ const Lang = imports.lang;
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
 
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
-const Sax = Me.imports.sax;
-
 const config_filename = GLib.get_user_config_dir() + '/syncthing/config.xml';
 const configfile = Gio.File.new_for_path(config_filename);
 
+function getCurrentDir() {
+    let stack = (new Error()).stack;
+    let stackLine = stack.split('\n')[1];
+    if (!stackLine)
+        throw new Error("Could not find current file.");
+    let match = new RegExp('@(.+):\\d+').exec(stackLine);
+    if (!match)
+        throw new Error("Could not find current file.");
+    let path = match[1];
+    let file = Gio.File.new_for_path(path);
+    return file.get_parent();
+}
+imports.searchPath.unshift(getCurrentDir().get_path());
+const Sax = imports.sax;
 
 const ConfigParser = new Lang.Class({
     Name: 'ConfigParser',

@@ -276,7 +276,7 @@ const SyncthingMenu = new Lang.Class({
     _onSettingsChanged: function(settings, key) {
         if (Settings.get_boolean('autoconfig')) {
             if (! this._configFileWatcher) {
-                this.baseURI = Settings.get_default_value('configuration-uri').unpack();
+                this._onAutoURIChanged(null);
                 this._configFileWatcher = new Filewatcher.ConfigFileWatcher(Lang.bind(this, this._onAutoURIChanged));
             }
         } else {
@@ -289,10 +289,7 @@ const SyncthingMenu = new Lang.Class({
     },
 
     _onAutoURIChanged: function(uri) {
-        if (uri)
-            this.baseURI = uri;
-        else
-            this.baseURI = Settings.get_default_value('configuration-uri').unpack();
+        this.baseURI = uri || Settings.get_default_value('configuration-uri').unpack();
     },
 
     _configReceived: function(session, msg, baseURI) {

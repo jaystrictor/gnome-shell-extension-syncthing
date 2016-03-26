@@ -86,9 +86,9 @@ License, as follows:
   ]
 
   function SAXParser (strict, opt) {
-    if (!(this instanceof SAXParser)) {
-      return new SAXParser(strict, opt)
-    }
+//    if (!(this instanceof SAXParser)) {
+//      return new SAXParser(strict, opt)
+//    }
 
     var parser = this
     clearBuffers(parser)
@@ -217,9 +217,9 @@ License, as follows:
   }
 
   function SAXStream (strict, opt) {
-    if (!(this instanceof SAXStream)) {
-      return new SAXStream(strict, opt)
-    }
+//    if (!(this instanceof SAXStream)) {
+//      return new SAXStream(strict, opt)
+//    }
 
     Stream.apply(this)
 
@@ -252,7 +252,7 @@ License, as follows:
           if (!h) {
             me.removeAllListeners(ev)
             me._parser['on' + ev] = h
-            return h
+//            return h
           }
           me.on(ev, h)
         },

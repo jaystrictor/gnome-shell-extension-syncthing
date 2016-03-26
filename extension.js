@@ -307,12 +307,9 @@ const SyncthingMenu = new Lang.Class({
     },
 
     _onConfig: function(actor, event) {
-        let launchContext = global.create_app_launch_context(event.get_time(), -1);
-        try {
-            Gio.AppInfo.launch_default_for_uri(this.baseURI, launchContext);
-        } catch(e) {
-            Main.notifyError(_("Failed to launch URI \"%s\"").format(uri), e.message);
-        }
+        let working_dir = Me.dir.get_path();
+        let [ok, pid] = GLib.spawn_async(working_dir, ['gjs', 'webviewer.js'], null, GLib.SpawnFlags.SEARCH_PATH, null);
+        GLib.spawn_close_pid(pid);
     },
 
     _onSwitch: function(actor, event) {

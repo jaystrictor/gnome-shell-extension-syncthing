@@ -108,6 +108,20 @@ const SyncthingViewer = new Lang.Class({
         this._window = new SyncthingWindow(this);
         Settings.connect('changed', Lang.bind(this, this._onSettingsChanged));
         this._onSettingsChanged();
+
+        this._addSimpleAction('quit', Lang.bind(this, function() {this.quit();} ));
+        // create the GMenu
+        let menumodel = new Gio.Menu();
+        menumodel.append("Quit", 'app.quit');
+        menumodel.freeze();
+        this.set_app_menu(menumodel);
+    },
+
+    _addSimpleAction: function(name, callback) {
+        let action = new Gio.SimpleAction({ name: name });
+        action.connect('activate', callback);
+        this.add_action(action);
+        return action;
     },
 
     _onSettingsChanged: function(settings, key) {

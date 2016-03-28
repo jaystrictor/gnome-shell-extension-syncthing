@@ -109,7 +109,7 @@ const FolderList = new Lang.Class({
     clearState: function() {
         for (let i = 0; i < this.folder_ids.length; i++) {
             let folder = this.folders.get(this.folder_ids[i]);
-            folder.setState("idle");
+            folder.setState("idle", null);
         }
     },
 });
@@ -173,8 +173,7 @@ const FolderMenuItem = new Lang.Class({
         _httpSession.queue_message(this._soup_msg, Lang.bind(this, this._folderReceived));
     },
 
-    setState: function(model) {
-        let state = model.state;
+    setState: function(state, model) {
         if (state === "idle") {
             this._label_state.set_text("");
         } else if (state === "scanning") {
@@ -204,13 +203,13 @@ const FolderMenuItem = new Lang.Class({
             return;
         } else if (msg.status_code !== 200) {
             // Failed to connect.
-            this.setState("unknown");
+            this.setState("unknown", null);
             return;
         }
         let data = msg.response_body.data;
         let model = JSON.parse(data);
-        this.setState(model);
         let state = model.state;
+        this.setState(state, model);
         if (this.state !== state) {
             this.state = state;
             this.emit('status-changed');

@@ -23,7 +23,6 @@ const Convenience = Me.imports.convenience;
 const Settings = Convenience.getSettings();
 const Filewatcher = Me.imports.filewatcher;
 
-
 const FolderList = new Lang.Class({
     Name: 'FolderList',
     Extends: PopupMenu.PopupMenuSection,
@@ -130,11 +129,13 @@ const FolderMenuItem = new Lang.Class({
         this.actor.add_child(this._label);
         this.actor.label_actor = this._label;
 
-        this._label_state = new St.Label({ style: 'color: gray; font-size: 80%;',
+        this._label_state = new St.Label({ style_class: 'folder-progress-text',
                                            x_expand: true,
                                            x_align: Clutter.ActorAlign.END,
                                            y_align: Clutter.ActorAlign.CENTER });
         this.actor.add_child(this._label_state);
+        this._statusIcon = new St.Icon({ style_class: 'folder-status-icon' });
+        this.actor.add_child(this._statusIcon);
 
         this._file = Gio.File.new_for_path(info.path);
     },
@@ -176,23 +177,24 @@ const FolderMenuItem = new Lang.Class({
     setState: function(state, model) {
         if (state === "idle") {
             this._label_state.set_text("");
+            this._statusIcon.icon_name = '';
         } else if (state === "scanning") {
-            this._label_state.set_text("\u2026"); // …
-            this._label_state.set_style('color: gray; font-size: 80%;');
+            this._label_state.set_text("");
+            this._statusIcon.icon_name = 'database';
         } else if (state === "syncing") {
             let pct = this._syncPercentage(model);
             this._label_state.set_text("%d\u2009%%".format(pct));
-            this._label_state.set_style('color: gray; font-size: 80%;');
+            this._statusIcon.icon_name = 'exchange';
         } else if (state === "error") {
-            this._label_state.set_text("\u2757"); // ❗
-            this._label_state.set_style('color: red; font-size: 90%;');
+            this._label_state.set_text("");
+            this._statusIcon.icon_name = 'exclamation-triangle';
         } else if (state === "unknown") {
-            this._label_state.set_text("\u2753"); // ❓
-            this._label_state.set_style('color: gray; font-size: 80%;');
+            this._label_state.set_text("");
+            this._statusIcon.icon_name = 'question';
         } else {
             log("unknown syncthing state: " + state);
-            this._label_state.set_text("\u2753"); // ❓
-            this._label_state.set_style('color: gray; font-size: 80%;');
+            this._label_state.set_text("");
+            this._statusIcon.icon_name = 'question';
         }
     },
 
@@ -243,8 +245,11 @@ const SyncthingMenu = new Lang.Class({
         this.actor.add_child(box);
 
         this._syncthingIcon = new St.Icon({ icon_name: 'syncthing-logo-symbolic',
-                                          style_class: 'system-status-icon' });
+                                          style_class: 'system-status-icon syncthing-logo-icon' });
         box.add_child(this._syncthingIcon);
+
+        this._statusIcon = new St.Icon({ style_class: 'system-status-icon syncthing-status-icon' });
+        box.add_child(this._statusIcon);
 
         this.status_label = new St.Label({ style: 'font-size: 70%;',
                                          y_align: Clutter.ActorAlign.CENTER });
@@ -361,18 +366,17 @@ const SyncthingMenu = new Lang.Class({
             this.item_config.setSensitive(true);
             let state = folder_list.state;
             if (state === 'error')
-                this.status_label.text = "\u2757"; // ❗
+                this._statusIcon.icon_name = 'exclamation-triangle';
             else if (state === 'unknown')
-                this.status_label.text = "\u2753"; // ❓
+                this._statusIcon.icon_name = 'question';
             else if (state === 'syncing')
-                this.status_label.text = "🔄"; // \u{1f504}
+                this._statusIcon.icon_name = 'exchange';
             else
-                this.status_label.text = "";
+                this._statusIcon.icon_name = '';
         } else {
-            //this._syncthingIcon.icon_name = 'syncthing-off-symbolic';
             this.item_switch.setToggleState(false);
             this.item_config.setSensitive(false);
-            this.status_label.text = "\u23f9"; // ⏹
+            this._statusIcon.icon_name = 'pause';
         }
     },
 

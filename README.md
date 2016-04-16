@@ -50,3 +50,9 @@ gnome-shell-extension-prefs &
 
 Alternatively, you can use Gnome Tweak Tool to configure the extension.
 
+## powered by
+### Font Awesome by Dave Gandy - http://fontawesome.io
+The glyphs `database.svg`, `exclamation-triangle.svg`, `question.svg`, `exchange.svg`, and `pause.svg` are extracted from Font Awesome. They are licensed under the [SIL OFL 1.1](http://scripts.sil.org/OFL).
+
+### sax-js by Isaac Z. Schlueter - https://github.com/isaacs/sax-js
+The file `sax.js` is licensed under the ISC license, part of it under the MIT license. Please see the header of this file for details.

@@ -1,0 +1,17 @@
+.syncthing-logo-icon {
+      padding-right: 0;
+}
+
+.syncthing-status-icon {
+      icon-size: 0.75em;
+      padding-left: 2px;
+}
+
+.folder-progress-text {
+      color: gray;
+      font-size: 80%;
+}
+
+.folder-status-icon {
+      icon-size: 1.09em;
+}

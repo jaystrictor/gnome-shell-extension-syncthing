@@ -204,7 +204,7 @@ const FolderMenuItem = new Lang.Class({
             // We cancelled the message.
             return;
         } else if (msg.status_code !== 200) {
-            // Failed to connect.
+            log("Failed to obtain syncthing folder information for folder '" + this.info.id + "'.");
             this.setState("unknown", null);
             return;
         }
@@ -298,7 +298,8 @@ const SyncthingMenu = new Lang.Class({
 
     _configReceived: function(session, msg, baseURI) {
         if (msg.status_code !== 200) {
-            // Failed to connect.
+            log("Failed to connect to syncthing daemon: " + msg.status_code + " " + msg.reason_phrase);
+            //log("Response body: " + msg.response_body.data);
             this.folder_list.clearState();
             // Do not update the folders of the folder list.
             return;

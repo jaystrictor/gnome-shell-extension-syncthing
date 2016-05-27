@@ -398,8 +398,8 @@ const SyncthingMenu = new Lang.Class({
         this._timeoutManager.cancel();
         if (this._childSource)
             GLib.Source.remove(this._childSource);
-        if (this._configwatcher)
-            this._configwatcher.destroy();
+        if (this._configFileWatcher)
+            this._configFileWatcher.destroy();
         this.parent();
     },
 });

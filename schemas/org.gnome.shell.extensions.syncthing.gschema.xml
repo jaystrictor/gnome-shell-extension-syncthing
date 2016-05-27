@@ -3,13 +3,18 @@
   <schema path="/org/gnome/shell/extensions/syncthing/" id="org.gnome.shell.extensions.syncthing">
     <key name="autoconfig" type="b">
       <default>true</default>
-      <summary>Automatic determinization of the REST API interface URI</summary>
-      <description>Automatic configuration of the web interface URI. If set to 'true', probe file 'config.xml' for the URI, otherwise take the alternative URI.</description>
+      <summary>Automatic determination of the REST API interface URI and the API Key</summary>
+      <description>Automatic configuration of the web interface URI. If set to 'true', probe file 'config.xml' for the URI and the API Key, otherwise use the user-provided options.</description>
     </key>
     <key name="configuration-uri" type="s">
       <default>"http://localhost:8384"</default>
       <summary>Alternative Web Interface URI</summary>
       <description>The URI to load when the 'Web Interface' button is clicked.</description>
+    </key>
+    <key name="api-key" type="s">
+      <default>""</default>
+      <summary>API Key</summary>
+      <description>An API Key used to authenticate to Syncthing.</description>
     </key>
   </schema>
 </schemalist>

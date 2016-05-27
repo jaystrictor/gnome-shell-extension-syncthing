@@ -43,27 +43,44 @@ const SyncthingIconPrefsWidget = new GObject.Class({
                                     valign: Gtk.Align.BASELINE }),
                     0, 1, 1, 1);
 
-        let entry = new Gtk.Entry({ input_purpose: Gtk.InputPurpose.URL,
-                                    hexpand: true,
-                                    valign: Gtk.Align.BASELINE });
-        this.attach(entry, 1, 1, 1, 1);
+        let uriEntry = new Gtk.Entry({ input_purpose: Gtk.InputPurpose.URL,
+                                       hexpand: true,
+                                       valign: Gtk.Align.BASELINE });
+        this.attach(uriEntry, 1, 1, 1, 1);
 
         let reset_button = new Gtk.Button({ label: "Reset",
                                             halign: Gtk.Align.END,
                                             valign: Gtk.Align.BASELINE });
         reset_button.connect('clicked', Lang.bind(this, this._onReset));
         this.attach(reset_button, 2, 1, 1, 1);
-        this._settings.bind('configuration-uri', entry, 'text', Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind('configuration-uri', uriEntry, 'text', Gio.SettingsBindFlags.DEFAULT);
+
+        let apiKeyLabel = '<b>' + _("API Key") + '</b>';
+        this.attach(new Gtk.Label({ label: apiKeyLabel,
+                                    use_markup: true,
+                                    halign: Gtk.Align.END,
+                                    valign: Gtk.Align.BASELINE }),
+                    0, 2, 1, 1);
+
+        let apiKeyEntry = new Gtk.Entry({ input_purpose: Gtk.InputPurpose.FREE_FORM,
+                                          hexpand: true,
+                                          valign: Gtk.Align.BASELINE });
+        this.attach(apiKeyEntry, 1, 2, 1, 1);
+        this._settings.bind('api-key', apiKeyEntry, 'text', Gio.SettingsBindFlags.DEFAULT);
+
 
         autoSwitch.connect('notify::active', Lang.bind(this, this._onSwitch));
         this._onSwitch(autoSwitch);
     },
 
     _onSwitch: function(obj, pspec) {
-        // set all widgets in row == 1 to sensitive/insensitive
-        for (let col = 0; col < 3; col++) {
-            let widget = this.get_child_at(col, 1);
-            widget.set_sensitive(! obj.active);
+        // set all widgets in rows 1 and 2 to sensitive/insensitive
+        for (let row = 1; row <= 2; row++) {
+            for (let col = 0; col < 3; col++) {
+                let widget = this.get_child_at(col, row);
+                if (widget)
+                    widget.set_sensitive(! obj.active);
+            }
         }
     },
 

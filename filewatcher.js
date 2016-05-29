@@ -25,12 +25,12 @@ const ConfigParser = new Lang.Class({
 
     _init: function() {
         this.state = 'root';
-        this.address = null;
-        this.tls = false;
+        this.config = {};
 
         this._parser = Sax.sax.parser(true);
         this._parser.onerror = Lang.bind(this, this._onError);
         this._parser.onopentag = Lang.bind(this, this._onOpenTag);
+        this._parser.onclosetag = Lang.bind(this, this._onCloseTag);
         this._parser.ontext = Lang.bind(this, this._onText);
     },
 
@@ -42,42 +42,61 @@ const ConfigParser = new Lang.Class({
         } catch (e) {
             log("Failed to read " + config_filename + ": " + e.message);
         }
-        callback(this._getResult());
+        // calculate the correct URI from variables 'tls' and 'address'
+        this.config['uri'] = this._getURI(this.config);
+        callback(this.config);
     },
 
-    _getResult: function() {
-        if (this.address) {
-            if (this.tls)
-                return "https://" + this.address;
+    _getURI: function(config) {
+        let address = config['address'];
+        let tls = config['tls'];
+        if (address) {
+            if (tls)
+                return "https://" + address;
             else
-                return "http://" + this.address;
-        } else {
-            return null;
+                return "http://" + address;
         }
+        return null;
     },
+
 
     _onError: function(error) {
         log("Error parsing " + this.filename + ": " + error);
-        this.address = null;
+        this.config = null;
         // We should abort the parsing process here.
     },
 
     _onText: function(text) {
         if (this.state === 'address') {
-            this.address = text;
-            this.state = 'end';
+            this.config['address'] = text;
+        }
+        if (this.state === 'apikey') {
+            this.config['apikey'] = text;
         }
     },
 
     _onOpenTag: function(tag) {
         if (this.state === 'root' && tag.name === 'gui') {
             this.state = 'gui';
-            if (tag.attributes['tls'].toUpperCase() == "TRUE")
-                this.tls = true;
-            return;
+            this.config['tls'] = (tag.attributes['tls'].toUpperCase() == "TRUE");
         }
-        if (this.state === 'gui' && tag.name === 'address') {
-            this.state = 'address';
+        if (this.state === 'gui') {
+            if (tag.name === 'address')
+                this.state = 'address';
+            else if (tag.name === 'apikey')
+                this.state = 'apikey';
+        }
+    },
+
+    _onCloseTag: function(name) {
+        if (this.state === 'gui' && name === 'gui') {
+            this.state = 'end';
+        }
+        if (this.state === 'address' && name === 'address') {
+            this.state = 'gui';
+        }
+        if (this.state === 'apikey' && name === 'apikey') {
+            this.state = 'gui';
         }
     },
 });
@@ -125,9 +144,9 @@ const ConfigFileWatcher = new Lang.Class({
     _onRunFinished: function(result) {
         this.running_state = 'cooldown';
         this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this.COOLDOWN_TIME, Lang.bind(this, this._nextState));
-        if (result != this.uri) {
-            this.uri = result;
-            this.callback(this.uri);
+        if (result != this.config) {
+            this.config = result;
+            this.callback(this.config);
         }
     },
 

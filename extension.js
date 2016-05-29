@@ -34,7 +34,7 @@ const FolderList = new Lang.Class({
         this.state = "idle";
     },
 
-    update: function(baseURI, config) {
+    update: function(baseURI, apikey, config) {
         let folder_ids_clone = this.folder_ids.slice();
         for (let i = 0; i < config.folders.length; i++) {
             let folder_config = config.folders[i];
@@ -47,7 +47,7 @@ const FolderList = new Lang.Class({
                 // Add 'id' to folder list.
                 this._addFolder(id, folder_config);
             }
-            this.folders.get(id).update(baseURI);
+            this.folders.get(id).update(baseURI, apikey);
         }
         for (let j = 0; j < folder_ids_clone.length; j++) {
             let id = folder_ids_clone[j];
@@ -85,8 +85,7 @@ const FolderList = new Lang.Class({
         return low;
     },
 
-
-    _folderChanged: function(folder) {
+    _folderChanged: function() {
         let states = this.folder_ids.map(Lang.bind(this, function(id){
             return this.folders.get(id).state;
         }));
@@ -108,7 +107,7 @@ const FolderList = new Lang.Class({
     clearState: function() {
         for (let i = 0; i < this.folder_ids.length; i++) {
             let folder = this.folders.get(this.folder_ids[i]);
-            folder.setState("idle", null);
+            folder.setState("unknown", null);
         }
     },
 });
@@ -118,7 +117,6 @@ const FolderMenuItem = new Lang.Class({
     Extends: PopupMenu.PopupBaseMenuItem,
 
     _init: function (info) {
-        this._status = "";
         this.parent();
         this.info = info;
         this._icon = new St.Icon({ gicon: this._getIcon(),
@@ -166,11 +164,14 @@ const FolderMenuItem = new Lang.Class({
         this.parent(event);
     },
 
-    update: function(baseURI) {
+    update: function(baseURI, apikey) {
         if (this._soup_msg)
             _httpSession.cancel_message(this._soup_msg, Soup.Status.CANCELLED);
         let query_uri = baseURI + '/rest/db/status?folder=' + this.info.id;
         this._soup_msg = Soup.Message.new('GET', query_uri);
+        if (apikey) {
+            this._soup_msg.request_headers.append('X-API-Key', apikey);
+        }
         _httpSession.queue_message(this._soup_msg, Lang.bind(this, this._folderReceived));
     },
 
@@ -196,6 +197,10 @@ const FolderMenuItem = new Lang.Class({
             this._label_state.set_text("");
             this._statusIcon.icon_name = 'question';
         }
+        if (this.state !== state) {
+            this.state = state;
+            this.emit('status-changed');
+        }
     },
 
     _folderReceived: function(session, msg) {
@@ -212,10 +217,6 @@ const FolderMenuItem = new Lang.Class({
         let model = JSON.parse(data);
         let state = model.state;
         this.setState(state, model);
-        if (this.state !== state) {
-            this.state = state;
-            this.emit('status-changed');
-        }
     },
 
     _syncPercentage: function(model) {
@@ -273,6 +274,7 @@ const SyncthingMenu = new Lang.Class({
         Settings.connect('changed', Lang.bind(this, this._onSettingsChanged));
         this._onSettingsChanged();
 
+        this._isConnected = false;
         this._updateMenu();
         this._timeoutManager = new TimeoutManager(1, 10, Lang.bind(this, this._updateMenu));
     },
@@ -280,8 +282,8 @@ const SyncthingMenu = new Lang.Class({
     _onSettingsChanged: function(settings, key) {
         if (Settings.get_boolean('autoconfig')) {
             if (! this._configFileWatcher) {
-                this._onAutoURIChanged(null);
-                this._configFileWatcher = new Filewatcher.ConfigFileWatcher(Lang.bind(this, this._onAutoURIChanged));
+                this._onAutoConfigChanged(null);
+                this._configFileWatcher = new Filewatcher.ConfigFileWatcher(Lang.bind(this, this._onAutoConfigChanged));
             }
         } else {
             if (this._configFileWatcher) {
@@ -289,26 +291,45 @@ const SyncthingMenu = new Lang.Class({
                 this._configFileWatcher = null;
             }
             this.baseURI = Settings.get_string('configuration-uri');
+            this.apikey = Settings.get_string('api-key');
         }
     },
 
-    _onAutoURIChanged: function(uri) {
-        this.baseURI = uri || Settings.get_default_value('configuration-uri').unpack();
+    _onAutoConfigChanged: function(config) {
+        if (config === null) {
+            this.baseURI = Settings.get_default_value('configuration-uri').unpack();
+            this.apikey = null;
+        } else {
+            this.baseURI = config['uri'] || Settings.get_default_value('configuration-uri').unpack();
+            this.apikey = config['apikey'];
+        }
     },
 
-    _configReceived: function(session, msg, baseURI) {
+    _configReceived: function(session, msg, baseURI, apikey) {
         if (msg.status_code !== 200) {
-            log("Failed to connect to syncthing daemon: " + msg.status_code + " " + msg.reason_phrase);
-            //log("Response body: " + msg.response_body.data);
+            // Check whether the syncthing daemon does not respond due to startup stage.
+            if (msg.status_code !== Soup.Status.CANT_CONNECT) {
+                log("Failed to connect to syncthing daemon: " + msg.status_code + " " + msg.reason_phrase);
+                //log("Response body: " + msg.response_body.data);
+            }
+            // Clear the state of each folder.
             this.folder_list.clearState();
+            if (this._isConnected) {
+                this._isConnected = false;
+                this._onStatusChanged();
+            }
             // Do not update the folders of the folder list.
             return;
         }
         let data = msg.response_body.data;
         let config = JSON.parse(data);
-        if ('version' in config && 'folders' in config && 'devices' in config)
+        if (config !== null && 'version' in config && 'folders' in config && 'devices' in config)
             // This seems to be a valid syncthing connection.
-            this.folder_list.update(baseURI, config);
+            this.folder_list.update(baseURI, apikey, config);
+            if (!this._isConnected) {
+                this._isConnected = true;
+                this._onStatusChanged();
+            }
     },
 
     _onConfig: function(actor, event) {
@@ -362,7 +383,7 @@ const SyncthingMenu = new Lang.Class({
         this._childSource = null;
         GLib.spawn_close_pid(pid);
         this._daemonRunning = (status === 0);
-        this._onStatusChanged(this.folder_list);
+        this._onStatusChanged();
     },
 
     _updateMenu: function() {
@@ -370,18 +391,25 @@ const SyncthingMenu = new Lang.Class({
         // The current syncthing config is fetched from 'http://localhost:8384/rest/system/config' or similar
         let config_uri = this.baseURI + '/rest/system/config';
         let msg = Soup.Message.new('GET', config_uri);
-        _httpSession.queue_message(msg, Lang.bind(this, this._configReceived, this.baseURI));
+        if (this.apikey) {
+            msg.request_headers.append('X-API-Key', this.apikey);
+        }
+        _httpSession.queue_message(msg, Lang.bind(this, this._configReceived, this.baseURI, this.apikey));
     },
 
-    _onStatusChanged: function(folder_list) {
+    _onStatusChanged: function() {
+        // This function is called whenever
+        // 1) the status of the folder_list changes or
+        // 2) the systemd 'is-active' status changes (variable 'this._daemonRunning') or
+        // 3) the connection to the daemon (variable 'this._isConnected') changes.
         if (this._daemonRunning) {
             //this._syncthingIcon.icon_name = 'syncthing-logo-symbolic';
             this.item_switch.setToggleState(true);
             this.item_config.setSensitive(true);
-            let state = folder_list.state;
-            if (state === 'error')
+            let state = this.folder_list.state;
+            if (state === 'error' || ! this._isConnected) {
                 this._statusIcon.icon_name = 'exclamation-triangle';
-            else if (state === 'unknown')
+            } else if (state === 'unknown')
                 this._statusIcon.icon_name = 'question';
             else if (state === 'syncing')
                 this._statusIcon.icon_name = 'exchange';

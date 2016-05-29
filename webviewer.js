@@ -127,7 +127,7 @@ const SyncthingViewer = new Lang.Class({
     _onSettingsChanged: function(settings, key) {
         if (Settings.get_boolean('autoconfig')) {
             if (! this._configFileWatcher) {
-                this._configFileWatcher = new Filewatcher.ConfigFileWatcher(Lang.bind(this, this._onAutoURIChanged));
+                this._configFileWatcher = new Filewatcher.ConfigFileWatcher(Lang.bind(this, this._onAutoConfigChanged));
             }
         } else {
             if (this._configFileWatcher) {
@@ -135,16 +135,24 @@ const SyncthingViewer = new Lang.Class({
                 this._configFileWatcher = null;
             }
             let uri = Settings.get_string('configuration-uri');
-            this._changeURI(uri);
+            let apikey = Settings.get_string('api-key');
+            this._changeConfig(uri, apikey);
         }
     },
 
-    _onAutoURIChanged: function(uri) {
-        uri = uri || Settings.get_default_value('configuration-uri').unpack();
-        this._changeURI(uri);
+    _onAutoConfigChanged: function(config) {
+        let uri;
+        let apikey = null;
+        if (config === null) {
+            uri = Settings.get_default_value('configuration-uri').unpack();
+        } else {
+            uri = config['uri'] || Settings.get_default_value('configuration-uri').unpack();
+            apikey = config['apikey'];
+        }
+        this._changeConfig(uri, apikey);
     },
 
-    _changeURI: function(uri) {
+    _changeConfig: function(uri, apikey) {
         if (uri == this.baseURI)
             return;
         this.baseURI = uri;

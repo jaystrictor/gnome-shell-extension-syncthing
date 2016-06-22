@@ -309,7 +309,7 @@ const SyncthingMenu = new Lang.Class({
         if (msg.status_code !== 200) {
             // Check whether the syncthing daemon does not respond due to startup stage.
             if (msg.status_code !== Soup.Status.CANT_CONNECT) {
-                log("Failed to connect to syncthing daemon: " + msg.status_code + " " + msg.reason_phrase);
+                log("Failed to connect to syncthing daemon at URI '" + baseURI + "': " + msg.status_code + " " + msg.reason_phrase);
                 //log("Response body: " + msg.response_body.data);
             }
             // Clear the state of each folder.

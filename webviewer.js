@@ -52,8 +52,13 @@ const SyncthingWindow = new Lang.Class({
         this._webView.show();
     },
 
-    loadURI: function(uri) {
-        this._webView.load_uri(uri);
+    loadURI: function(uri, apikey) {
+        let request = WebKit.URIRequest.new(uri);
+        if (apikey) {
+            let headers = request.get_http_headers();
+            headers.append('X-API-Key', apikey);
+        }
+        this._webView.load_request(request);
     },
 
     vfunc_delete_event: function(event) {
@@ -156,7 +161,7 @@ const SyncthingViewer = new Lang.Class({
         if (uri == this.baseURI)
             return;
         this.baseURI = uri;
-        this._window.loadURI(uri);
+        this._window.loadURI(uri, apikey);
     },
 });
 

@@ -47,7 +47,7 @@ const FolderList = new Lang.Class({
                 // Add 'id' to folder list.
                 this._addFolder(id, folder_config);
             }
-            this.folders.get(id).update(baseURI, apikey);
+            this.folders.get(id).update(baseURI, apikey, folder_config);
         }
         for (let j = 0; j < folder_ids_clone.length; j++) {
             let id = folder_ids_clone[j];
@@ -164,7 +164,9 @@ const FolderMenuItem = new Lang.Class({
         this.parent(event);
     },
 
-    update: function(baseURI, apikey) {
+    update: function(baseURI, apikey, folderConfig) {
+        let label = (folderConfig.label !== "" ? folderConfig.label : folderConfig.id);
+        this._label.text = label;
         if (this._soup_msg)
             _httpSession.cancel_message(this._soup_msg, Soup.Status.CANCELLED);
         let query_uri = baseURI + '/rest/db/status?folder=' + this.info.id;
@@ -209,7 +211,7 @@ const FolderMenuItem = new Lang.Class({
             // We cancelled the message.
             return;
         } else if (msg.status_code !== 200) {
-            log("Failed to obtain syncthing folder information for folder '" + this.info.id + "'.");
+            log("Failed to obtain syncthing folder information for folder id '" + this.info.id + "'.");
             this.setState("unknown", null);
             return;
         }

@@ -68,6 +68,18 @@ const SyncthingIconPrefsWidget = new GObject.Class({
         this.attach(apiKeyEntry, 1, 2, 1, 1);
         this._settings.bind('api-key', apiKeyEntry, 'text', Gio.SettingsBindFlags.DEFAULT);
 
+        let externalBrowserLabel = '<b>' + _("Always use external browser") + '</b>';
+        this.attach(new Gtk.Label({ label: externalBrowserLabel,
+                                    use_markup: true,
+                                    halign: Gtk.Align.END,
+                                    valign: Gtk.Align.BASELINE }),
+                    0, 3, 1, 1);
+
+        let externalBrowserSwitch = new Gtk.Switch({ halign: Gtk.Align.START,
+                                                     valign: Gtk.Align.BASELINE });
+        this.attach(externalBrowserSwitch, 1, 3, 2, 1);
+        this._settings.bind('external-browser', externalBrowserSwitch, 'active', Gio.SettingsBindFlags.DEFAULT);
+
 
         autoSwitch.connect('notify::active', Lang.bind(this, this._onSwitch));
         this._onSwitch(autoSwitch);

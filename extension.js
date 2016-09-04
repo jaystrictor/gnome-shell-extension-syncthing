@@ -258,9 +258,13 @@ const SyncthingMenu = new Lang.Class({
                                          y_align: Clutter.ActorAlign.CENTER });
         box.add_child(this.status_label);
 
-        this.item_switch = new PopupMenu.PopupSwitchMenuItem("Syncthing", false, null);
-        this.item_switch.connect('activate', Lang.bind(this, this._onSwitch));
-        this.menu.addMenuItem(this.item_switch);
+        this.item_switch_daemon = new PopupMenu.PopupSwitchMenuItem("Syncthing", false, null);
+        this.item_switch_daemon.connect('activate', Lang.bind(this, this._onSwitchDaemon));
+        this.menu.addMenuItem(this.item_switch_daemon);
+
+        this.item_switch_inotify = new PopupMenu.PopupSwitchMenuItem("Syncthing INotify", false, null);
+        this.item_switch_inotify.connect('activate', Lang.bind(this, this._onSwitchINotify));
+        this.menu.addMenuItem(this.item_switch_inotify);
 
         this.item_config = new PopupMenu.PopupImageMenuItem(_("Web Interface"), 'emblem-system-symbolic')
         this.item_config.connect('activate', Lang.bind(this, this._onConfig));
@@ -353,7 +357,7 @@ const SyncthingMenu = new Lang.Class({
         GLib.spawn_close_pid(pid);
     },
 
-    _onSwitch: function(actor, event) {
+    _onSwitchDaemon: function(actor, event) {
         if (actor.state) {
             let argv = 'systemctl --user start syncthing.service';
             let [ok, pid] = GLib.spawn_async(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
@@ -371,25 +375,61 @@ const SyncthingMenu = new Lang.Class({
         this._updateMenu();
     },
 
-    _getSyncthingState: function() {
-        if (this._childSource)
+    _onSwitchINotify: function(actor, event) {
+        if (actor.state) {
+            let argv = 'systemctl --user start syncthing-inotify.service';
+            let [ok, pid] = GLib.spawn_async(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
+            GLib.spawn_close_pid(pid);
+            this._timeoutManager.changeTimeout(1, 10);
+        } else {
+            let argv = 'systemctl --user stop syncthing-inotify.service';
+            let [ok, pid] = GLib.spawn_async(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
+            GLib.spawn_close_pid(pid);
+            this._timeoutManager.changeTimeout(10, 10);
+            // To prevent icon flickering we set _inotifyRunning=false prematurely.
+            // Even if this proves to be wrong in the following _updateMenu(), we don't do any harm.
+            this._inotifyRunning = false;
+        }
+        this._updateMenu();
+    },
+
+    _getSyncthingDaemonState: function() {
+        if (this._childDaemonSource)
             return;
         let argv = 'systemctl --user is-active syncthing.service';
         let flags = GLib.SpawnFlags.DO_NOT_REAP_CHILD | GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.STDOUT_TO_DEV_NULL;
         let [ok, pid, in_fd, out_fd, err_fd]  = GLib.spawn_async(null, argv.split(' '), null, flags, null);
-        this._childSource = GLib.child_watch_add(GLib.PRIORITY_DEFAULT_IDLE, pid, Lang.bind(this, this._onSyncthingState));
+        this._childDaemonSource = GLib.child_watch_add(GLib.PRIORITY_DEFAULT_IDLE, pid, Lang.bind(this, this._onSyncthingDaemonState));
     },
 
-    _onSyncthingState: function(pid, status) {
-        GLib.Source.remove(this._childSource);
-        this._childSource = null;
+    _getSyncthingINotifyState: function() {
+        if (this._childINotifySource)
+            return;
+        let argv = 'systemctl --user is-active syncthing-inotify.service';
+        let flags = GLib.SpawnFlags.DO_NOT_REAP_CHILD | GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.STDOUT_TO_DEV_NULL;
+        let [ok, pid, in_fd, out_fd, err_fd]  = GLib.spawn_async(null, argv.split(' '), null, flags, null);
+        this._childINotifySource = GLib.child_watch_add(GLib.PRIORITY_DEFAULT_IDLE, pid, Lang.bind(this, this._onSyncthingINotifyState));
+    },
+
+    _onSyncthingDaemonState: function(pid, status) {
+        GLib.Source.remove(this._childDaemonSource);
+        this._childDaemonSource = null;
         GLib.spawn_close_pid(pid);
         this._daemonRunning = (status === 0);
         this._onStatusChanged();
     },
 
+    _onSyncthingINotifyState: function(pid, status) {
+        GLib.Source.remove(this._childINotifySource);
+        this._childINotifySource = null;
+        GLib.spawn_close_pid(pid);
+        this._inotifyRunning = (status === 0);
+        this._onStatusChanged();
+    },
+
     _updateMenu: function() {
-        this._getSyncthingState();
+        this._getSyncthingDaemonState();
+        this._getSyncthingINotifyState();
         // The current syncthing config is fetched from 'http://localhost:8384/rest/system/config' or similar
         let config_uri = this.baseURI + '/rest/system/config';
         let msg = Soup.Message.new('GET', config_uri);
@@ -406,7 +446,7 @@ const SyncthingMenu = new Lang.Class({
         // 3) the connection to the daemon (variable 'this._isConnected') changes.
         if (this._daemonRunning) {
             //this._syncthingIcon.icon_name = 'syncthing-logo-symbolic';
-            this.item_switch.setToggleState(true);
+            this.item_switch_daemon.setToggleState(true);
             this.item_config.setSensitive(true);
             let state = this.folder_list.state;
             if (state === 'error' || ! this._isConnected) {
@@ -418,10 +458,12 @@ const SyncthingMenu = new Lang.Class({
             else
                 this._statusIcon.icon_name = '';
         } else {
-            this.item_switch.setToggleState(false);
+            this.item_switch_daemon.setToggleState(false);
             this.item_config.setSensitive(false);
             this._statusIcon.icon_name = 'pause';
         }
+
+        this.item_switch_inotify.setToggleState(this._inotifyRunning);
     },
 
     destroy: function() {

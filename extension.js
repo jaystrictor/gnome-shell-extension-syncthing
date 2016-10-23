@@ -325,13 +325,16 @@ const SyncthingMenu = new Lang.Class({
         }
         let data = msg.response_body.data;
         let config = JSON.parse(data);
-        if (config !== null && 'version' in config && 'folders' in config && 'devices' in config)
+        if (config !== null && 'version' in config && 'folders' in config && 'devices' in config) {
             // This seems to be a valid syncthing connection.
             this.folder_list.update(baseURI, apikey, config);
             if (!this._isConnected) {
                 this._isConnected = true;
                 this._onStatusChanged();
             }
+        } else {
+            log("Connection to syncthing daemon responded with unparseable data.");
+        }
     },
 
     _onConfig: function(actor, event) {

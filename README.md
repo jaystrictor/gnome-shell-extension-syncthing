@@ -1,6 +1,6 @@
 # Syncthing Gnome Shell extension
 
-![ScreenShot](https://extensions.gnome.org/static/extension-data/screenshots/screenshot_989_b97mez4.png)
+![ScreenShot](https://extensions.gnome.org/extension-data/screenshots/screenshot_989_b97mez4.png)
 
 This is a simple shell extension for Gnome 3.
 It displays a small symbolic Syncthing icon with the following features

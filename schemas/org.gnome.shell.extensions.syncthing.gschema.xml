@@ -16,5 +16,10 @@
       <summary>API Key</summary>
       <description>An API Key used to authenticate to Syncthing.</description>
     </key>
+    <key name="external-browser" type="b">
+      <default>false</default>
+      <summary>Always open the web interface in the external browser</summary>
+      <description>Always open the web interface in the external browser, never use the built-in webview.</description>
+    </key>
   </schema>
 </schemalist>

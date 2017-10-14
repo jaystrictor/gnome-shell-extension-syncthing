@@ -262,7 +262,8 @@ const SyncthingMenu = new Lang.Class({
         this.item_switch.connect('activate', Lang.bind(this, this._onSwitch));
         this.menu.addMenuItem(this.item_switch);
 
-        this.item_config = new PopupMenu.PopupImageMenuItem(_("Web Interface"), 'emblem-system-symbolic')
+        let icon = new Gio.ThemedIcon({ name: 'emblem-system-symbolic' });
+        this.item_config = new PopupMenu.PopupImageMenuItem(_("Web Interface"), icon);
         this.item_config.connect('activate', Lang.bind(this, this._onConfig));
         this.menu.addMenuItem(this.item_config);
         this.item_config.setSensitive(false);

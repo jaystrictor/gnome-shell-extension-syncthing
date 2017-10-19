@@ -1,3 +1,4 @@
+const Config = imports.misc.config;
 const Lang = imports.lang;
 const Clutter = imports.gi.Clutter;
 const Gio = imports.gi.Gio;
@@ -262,7 +263,10 @@ const SyncthingMenu = new Lang.Class({
         this.item_switch.connect('activate', Lang.bind(this, this._onSwitch));
         this.menu.addMenuItem(this.item_switch);
 
-        let icon = new Gio.ThemedIcon({ name: 'emblem-system-symbolic' });
+        let icon = (parseFloat(Config.PACKAGE_VERSION.substr(0, Config.PACKAGE_VERSION.indexOf(".", 3))) < 3.26) ?
+            'emblem-system-symbolic'
+            : new Gio.ThemedIcon({ name: 'emblem-system-symbolic' });
+
         this.item_config = new PopupMenu.PopupImageMenuItem(_("Web Interface"), icon);
         this.item_config.connect('activate', Lang.bind(this, this._onConfig));
         this.menu.addMenuItem(this.item_config);

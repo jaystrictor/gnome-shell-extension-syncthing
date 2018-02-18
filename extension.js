@@ -119,6 +119,7 @@ const FolderMenuItem = new Lang.Class({
 
     _init: function (info) {
         this.parent();
+        this.state = "unknown";
         this.info = info;
         this._icon = new St.Icon({ gicon: this._getIcon(),
                                    style_class: 'popup-menu-icon' });

@@ -102,7 +102,7 @@ const ConfigParser = new Lang.Class({
 });
 
 
-const ConfigFileWatcher = new Lang.Class({
+var ConfigFileWatcher = new Lang.Class({
     Name: 'ConfigFileWatcher',
 
     /* File Watcher with 4 internal states:

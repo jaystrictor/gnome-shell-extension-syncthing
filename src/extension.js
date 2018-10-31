@@ -26,6 +26,10 @@ const Convenience = Me.imports.convenience;
 const Settings = Convenience.getSettings();
 const Filewatcher = Me.imports.filewatcher;
 
+function myLog(msg) {
+    log("[syncthingicon] " + msg);
+}
+
 const FolderList = new Lang.Class({
     Name: "FolderList",
     Extends: PopupMenu.PopupMenuSection,
@@ -203,7 +207,7 @@ const FolderMenuItem = new Lang.Class({
             this._label_state.set_text("");
             this._statusIcon.icon_name = "question";
         } else {
-            log("unknown syncthing state: " + state);
+            myLog("unknown syncthing state: " + state);
             this._label_state.set_text("");
             this._statusIcon.icon_name = "question";
         }
@@ -219,7 +223,7 @@ const FolderMenuItem = new Lang.Class({
             // We cancelled the message.
             return;
         } else if (msg.status_code !== 200) {
-            log("Failed to obtain syncthing folder information for folder id \"" + this.info.id + "\".");
+            myLog("Failed to obtain syncthing folder information for folder id \"" + this.info.id + "\".");
             this.setState("unknown", null);
             return;
         }
@@ -325,8 +329,8 @@ const SyncthingMenu = new Lang.Class({
         if (msg.status_code !== 200) {
             // Check whether the syncthing daemon does not respond due to startup stage.
             if (msg.status_code !== Soup.Status.CANT_CONNECT) {
-                log("Failed to connect to syncthing daemon at URI \"" + baseURI + "\": " + msg.status_code + " " + msg.reason_phrase);
-                //log("Response body: " + msg.response_body.data);
+                myLog("Failed to connect to syncthing daemon at URI \"" + baseURI + "\": " + msg.status_code + " " + msg.reason_phrase);
+                //myLog("Response body: " + msg.response_body.data);
             }
             // Clear the state of each folder.
             this.folder_list.clearState();
@@ -347,7 +351,7 @@ const SyncthingMenu = new Lang.Class({
                 this._onStatusChanged();
             }
         } else {
-            log("Connection to syncthing daemon responded with unparseable data.");
+            myLog("Connection to syncthing daemon responded with unparseable data.");
         }
     },
 

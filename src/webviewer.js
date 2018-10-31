@@ -20,6 +20,11 @@ function getCurrentDir() {
 imports.searchPath.unshift(getCurrentDir().get_path());
 const Filewatcher = imports.filewatcher;
 
+function myLog(msg) {
+    log("[syncthingicon-webview] " + msg);
+}
+
+
 function getSettings() {
     let dir = getCurrentDir();
     let schema = "org.gnome.shell.extensions.syncthing";
@@ -73,7 +78,7 @@ const SyncthingWindow = new Lang.Class({
             try {
                 Gio.AppInfo.launch_default_for_uri(uri, launchContext);
             } catch(e) {
-                log("Failed to launch URI \"%s\": ".format(uri) + e.message);
+                myLog("Failed to launch URI \"%s\": ".format(uri) + e.message);
             }
             decision.ignore();
             return true;

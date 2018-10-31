@@ -50,6 +50,13 @@ gnome-shell-extension-prefs &
 
 Alternatively, you can use Gnome Tweak Tool to configure the extension.
 
+## Debugging
+
+For debugging purposes you should look at the log output of gnome-shell. If you have systemd, the following command should print all the important log messages:
+```sh
+journalctl -b /usr/bin/gnome-shell | grep syncthingicon
+```
+
 ## powered by
 ### Font Awesome by Dave Gandy - http://fontawesome.io
 The glyphs `database.svg`, `exclamation-triangle.svg`, `question.svg`, `exchange.svg`, and `pause.svg` are extracted from Font Awesome. They are licensed under the [SIL OFL 1.1](http://scripts.sil.org/OFL).

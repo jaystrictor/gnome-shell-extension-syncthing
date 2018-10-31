@@ -330,7 +330,13 @@ const SyncthingMenu = new Lang.Class({
             // Check whether the syncthing daemon does not respond due to startup stage.
             if (msg.status_code !== Soup.Status.CANT_CONNECT) {
                 myLog("Failed to connect to syncthing daemon at URI \"" + baseURI + "\": " + msg.status_code + " " + msg.reason_phrase);
-                //myLog("Response body: " + msg.response_body.data);
+                if (msg.status_code === Soup.Status.SSL_FAILED) {
+                    myLog("TLS is currently not supported.");
+                } else if (msg.response_body.data === "CSRF Error\n") {
+                    myLog("CSRF Error. Please verify your API key.");
+                } else {
+                    myLog("Response body: " + msg.response_body.data);
+                }
             }
             // Clear the state of each folder.
             this.folder_list.clearState();

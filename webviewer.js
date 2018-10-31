@@ -61,11 +61,6 @@ const SyncthingWindow = new Lang.Class({
         this._webView.load_request(request);
     },
 
-    vfunc_delete_event: function(event) {
-        this.hide();
-        return true;
-    },
-
     _onContextMenu: function(web_view, context_menu, event, hit_test_result) {
         return true;
     },

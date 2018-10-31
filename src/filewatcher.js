@@ -1,16 +1,18 @@
+"use strict";
+
 const Lang = imports.lang;
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
 
-const config_filename = GLib.get_user_config_dir() + '/syncthing/config.xml';
+const config_filename = GLib.get_user_config_dir() + "/syncthing/config.xml";
 const configfile = Gio.File.new_for_path(config_filename);
 
 function getCurrentDir() {
     let stack = (new Error()).stack;
-    let stackLine = stack.split('\n')[1];
+    let stackLine = stack.split("\n")[1];
     if (!stackLine)
         throw new Error("Could not find current file.");
-    let match = new RegExp('@(.+):\\d+').exec(stackLine);
+    let match = new RegExp("@(.+):\\d+").exec(stackLine);
     if (!match)
         throw new Error("Could not find current file.");
     let path = match[1];
@@ -21,10 +23,10 @@ imports.searchPath.unshift(getCurrentDir().get_path());
 const Sax = imports.sax;
 
 const ConfigParser = new Lang.Class({
-    Name: 'ConfigParser',
+    Name: "ConfigParser",
 
     _init: function() {
-        this.state = 'root';
+        this.state = "root";
         this.config = {};
 
         this._parser = Sax.sax.parser(true);
@@ -42,14 +44,14 @@ const ConfigParser = new Lang.Class({
         } catch (e) {
             log("Failed to read " + config_filename + ": " + e.message);
         }
-        // calculate the correct URI from variables 'tls' and 'address'
-        this.config['uri'] = this._getURI(this.config);
+        // calculate the correct URI from variables "tls" and "address"
+        this.config["uri"] = this._getURI(this.config);
         callback(this.config);
     },
 
     _getURI: function(config) {
-        let address = config['address'];
-        let tls = config['tls'];
+        let address = config["address"];
+        let tls = config["tls"];
         if (address) {
             if (tls)
                 return "https://" + address;
@@ -67,43 +69,43 @@ const ConfigParser = new Lang.Class({
     },
 
     _onText: function(text) {
-        if (this.state === 'address') {
-            this.config['address'] = text;
+        if (this.state === "address") {
+            this.config["address"] = text;
         }
-        if (this.state === 'apikey') {
-            this.config['apikey'] = text;
+        if (this.state === "apikey") {
+            this.config["apikey"] = text;
         }
     },
 
     _onOpenTag: function(tag) {
-        if (this.state === 'root' && tag.name === 'gui') {
-            this.state = 'gui';
-            this.config['tls'] = (tag.attributes['tls'].toUpperCase() == "TRUE");
+        if (this.state === "root" && tag.name === "gui") {
+            this.state = "gui";
+            this.config["tls"] = (tag.attributes["tls"].toUpperCase() == "TRUE");
         }
-        if (this.state === 'gui') {
-            if (tag.name === 'address')
-                this.state = 'address';
-            else if (tag.name === 'apikey')
-                this.state = 'apikey';
+        if (this.state === "gui") {
+            if (tag.name === "address")
+                this.state = "address";
+            else if (tag.name === "apikey")
+                this.state = "apikey";
         }
     },
 
     _onCloseTag: function(name) {
-        if (this.state === 'gui' && name === 'gui') {
-            this.state = 'end';
+        if (this.state === "gui" && name === "gui") {
+            this.state = "end";
         }
-        if (this.state === 'address' && name === 'address') {
-            this.state = 'gui';
+        if (this.state === "address" && name === "address") {
+            this.state = "gui";
         }
-        if (this.state === 'apikey' && name === 'apikey') {
-            this.state = 'gui';
+        if (this.state === "apikey" && name === "apikey") {
+            this.state = "gui";
         }
     },
 });
 
 
 var ConfigFileWatcher = new Lang.Class({
-    Name: 'ConfigFileWatcher',
+    Name: "ConfigFileWatcher",
 
     /* File Watcher with 4 internal states:
        ready -> warmup -> running -> cooldown
@@ -116,22 +118,22 @@ var ConfigFileWatcher = new Lang.Class({
 
     _init: function(callback) {
         this.callback = callback;
-        this.running_state = 'ready';
+        this.running_state = "ready";
         this.run_scheduled = false;
         this.monitor = configfile.monitor_file(Gio.FileMonitorFlags.NONE, null);
-        this.monitor.connect('changed', Lang.bind(this, this._configfileChanged));
+        this.monitor.connect("changed", Lang.bind(this, this._configfileChanged));
         this._configfileChanged();
     },
 
     _configfileChanged: function(monitor, file, other_file, event_type) {
-        if (this.running_state === 'ready') {
-            this.running_state = 'warmup';
+        if (this.running_state === "ready") {
+            this.running_state = "warmup";
             this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this.WARMUP_TIME, Lang.bind(this, this._nextState));
-        } else if (this.running_state === 'warmup') {
+        } else if (this.running_state === "warmup") {
             // Nothing to do here.
-        } else if (this.running_state === 'running') {
+        } else if (this.running_state === "running") {
             this.run_scheduled = true;
-        } else if (this.running_state === 'cooldown') {
+        } else if (this.running_state === "cooldown") {
             this.run_scheduled = true;
         }
     },
@@ -142,7 +144,7 @@ var ConfigFileWatcher = new Lang.Class({
     },
 
     _onRunFinished: function(result) {
-        this.running_state = 'cooldown';
+        this.running_state = "cooldown";
         this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this.COOLDOWN_TIME, Lang.bind(this, this._nextState));
         if (result != this.config) {
             this.config = result;
@@ -152,15 +154,15 @@ var ConfigFileWatcher = new Lang.Class({
 
     _nextState: function() {
         this._source = null;
-        if (this.running_state === 'warmup') {
-            this.running_state = 'running';
+        if (this.running_state === "warmup") {
+            this.running_state = "running";
             this.run_scheduled = false;
             this._run();
         } else {
-            // this.running_state === 'cooldown'
-            this.running_state = 'ready';
+            // this.running_state === "cooldown"
+            this.running_state = "ready";
             if (this.run_scheduled) {
-                this.running_state = 'warmup';
+                this.running_state = "warmup";
                 this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, WARMUP_TIME, Lang.bind(this, this._nextState));
             }
         }

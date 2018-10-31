@@ -1,9 +1,11 @@
+"use strict";
+
 const Gio = imports.gi.Gio;
 const Gtk = imports.gi.Gtk;
 const GObject = imports.gi.GObject;
 const Lang = imports.lang;
 
-const GETTEXT_DOMAIN = 'gnome-shell-extension-syncthing';
+const GETTEXT_DOMAIN = "gnome-shell-extension-syncthing";
 const Gettext = imports.gettext.domain(GETTEXT_DOMAIN);
 const _ = Gettext.gettext;
 
@@ -12,8 +14,8 @@ const Me = ExtensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;
 
 const SyncthingIconPrefsWidget = new GObject.Class({
-    Name: 'SyncthingIcon.Prefs.Widget',
-    GTypeName: 'SyncthingIconPrefsWidget',
+    Name: "SyncthingIcon.Prefs.Widget",
+    GTypeName: "SyncthingIconPrefsWidget",
     Extends: Gtk.Grid,
 
     _init: function(params) {
@@ -24,7 +26,7 @@ const SyncthingIconPrefsWidget = new GObject.Class({
         this.row_spacing = this.column_spacing = 12;
         this.orientation = Gtk.Orientation.HORIZONTAL;
 
-        let methodLabel = '<b>' + _("Automatic Configuration") + '</b>';
+        let methodLabel = "<b>" + _("Automatic Configuration") + "</b>";
         this.attach(new Gtk.Label({ label: methodLabel,
                                     use_markup: true,
                                     halign: Gtk.Align.END,
@@ -34,9 +36,9 @@ const SyncthingIconPrefsWidget = new GObject.Class({
         let autoSwitch = new Gtk.Switch({ halign: Gtk.Align.START,
                                             valign: Gtk.Align.BASELINE });
         this.attach(autoSwitch, 1, 0, 2, 1);
-        this._settings.bind('autoconfig', autoSwitch, 'active', Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind("autoconfig", autoSwitch, "active", Gio.SettingsBindFlags.DEFAULT);
 
-        let presentLabel = '<b>' + _("Alternative Web Interface URI") + '</b>';
+        let presentLabel = "<b>" + _("Alternative Web Interface URI") + "</b>";
         this.attach(new Gtk.Label({ label: presentLabel,
                                     use_markup: true,
                                     halign: Gtk.Align.END,
@@ -51,11 +53,11 @@ const SyncthingIconPrefsWidget = new GObject.Class({
         let reset_button = new Gtk.Button({ label: "Reset",
                                             halign: Gtk.Align.END,
                                             valign: Gtk.Align.BASELINE });
-        reset_button.connect('clicked', Lang.bind(this, this._onReset));
+        reset_button.connect("clicked", Lang.bind(this, this._onReset));
         this.attach(reset_button, 2, 1, 1, 1);
-        this._settings.bind('configuration-uri', uriEntry, 'text', Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind("configuration-uri", uriEntry, "text", Gio.SettingsBindFlags.DEFAULT);
 
-        let apiKeyLabel = '<b>' + _("API Key") + '</b>';
+        let apiKeyLabel = "<b>" + _("API Key") + "</b>";
         this.attach(new Gtk.Label({ label: apiKeyLabel,
                                     use_markup: true,
                                     halign: Gtk.Align.END,
@@ -66,9 +68,9 @@ const SyncthingIconPrefsWidget = new GObject.Class({
                                           hexpand: true,
                                           valign: Gtk.Align.BASELINE });
         this.attach(apiKeyEntry, 1, 2, 1, 1);
-        this._settings.bind('api-key', apiKeyEntry, 'text', Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind("api-key", apiKeyEntry, "text", Gio.SettingsBindFlags.DEFAULT);
 
-        let externalBrowserLabel = '<b>' + _("Always use external browser") + '</b>';
+        let externalBrowserLabel = "<b>" + _("Always use external browser") + "</b>";
         this.attach(new Gtk.Label({ label: externalBrowserLabel,
                                     use_markup: true,
                                     halign: Gtk.Align.END,
@@ -78,10 +80,10 @@ const SyncthingIconPrefsWidget = new GObject.Class({
         let externalBrowserSwitch = new Gtk.Switch({ halign: Gtk.Align.START,
                                                      valign: Gtk.Align.BASELINE });
         this.attach(externalBrowserSwitch, 1, 3, 2, 1);
-        this._settings.bind('external-browser', externalBrowserSwitch, 'active', Gio.SettingsBindFlags.DEFAULT);
+        this._settings.bind("external-browser", externalBrowserSwitch, "active", Gio.SettingsBindFlags.DEFAULT);
 
 
-        autoSwitch.connect('notify::active', Lang.bind(this, this._onSwitch));
+        autoSwitch.connect("notify::active", Lang.bind(this, this._onSwitch));
         this._onSwitch(autoSwitch);
     },
 
@@ -97,7 +99,7 @@ const SyncthingIconPrefsWidget = new GObject.Class({
     },
 
     _onReset: function(button) {
-        this._settings.reset('configuration-uri');
+        this._settings.reset("configuration-uri");
     },
 });
 

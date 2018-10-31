@@ -1,3 +1,5 @@
+"use strict";
+
 const Config = imports.misc.config;
 const Lang = imports.lang;
 const Clutter = imports.gi.Clutter;
@@ -14,7 +16,7 @@ const PopupMenu = imports.ui.popupMenu;
 
 const _httpSession = new Soup.Session();
 
-const GETTEXT_DOMAIN = 'gnome-shell-extension-syncthing';
+const GETTEXT_DOMAIN = "gnome-shell-extension-syncthing";
 const Gettext = imports.gettext.domain(GETTEXT_DOMAIN);
 const _ = Gettext.gettext;
 
@@ -25,7 +27,7 @@ const Settings = Convenience.getSettings();
 const Filewatcher = Me.imports.filewatcher;
 
 const FolderList = new Lang.Class({
-    Name: 'FolderList',
+    Name: "FolderList",
     Extends: PopupMenu.PopupMenuSection,
 
     _init: function() {
@@ -41,18 +43,18 @@ const FolderList = new Lang.Class({
             let folder_config = config.folders[i];
             let id = folder_config.id;
             if (this.folder_ids.indexOf(id) !== -1) {
-                // 'id' is already in this.folders_ids, just update.
+                // "id" is already in this.folders_ids, just update.
                 let position = folder_ids_clone.indexOf(id);
                 folder_ids_clone.splice(position, 1);
             } else {
-                // Add 'id' to folder list.
+                // Add "id" to folder list.
                 this._addFolder(id, folder_config);
             }
             this.folders.get(id).update(baseURI, apikey, folder_config);
         }
         for (let j = 0; j < folder_ids_clone.length; j++) {
             let id = folder_ids_clone[j];
-            // Remove 'id' from folder list.
+            // Remove "id" from folder list.
             this._removeFolder(id);
         }
     },
@@ -63,7 +65,7 @@ const FolderList = new Lang.Class({
         let menuitem = new FolderMenuItem(folder_config);
         this.addMenuItem(menuitem, position);
         this.folders.set(id, menuitem);
-        menuitem.connect('status-changed', Lang.bind(this, this._folderChanged));
+        menuitem.connect("status-changed", Lang.bind(this, this._folderChanged));
     },
 
     _removeFolder: function(id) {
@@ -102,7 +104,7 @@ const FolderList = new Lang.Class({
         if (state == this.state)
             return;
         this.state = state;
-        this.emit('status-changed');
+        this.emit("status-changed");
     },
 
     clearState: function() {
@@ -114,7 +116,7 @@ const FolderList = new Lang.Class({
 });
 
 const FolderMenuItem = new Lang.Class({
-    Name: 'FolderMenuItem',
+    Name: "FolderMenuItem",
     Extends: PopupMenu.PopupBaseMenuItem,
 
     _init: function (info) {
@@ -122,19 +124,19 @@ const FolderMenuItem = new Lang.Class({
         this.state = "unknown";
         this.info = info;
         this._icon = new St.Icon({ gicon: this._getIcon(),
-                                   style_class: 'popup-menu-icon' });
+                                   style_class: "popup-menu-icon" });
         this.actor.add_child(this._icon);
 
         this._label = new St.Label({ text: info.id });
         this.actor.add_child(this._label);
         this.actor.label_actor = this._label;
 
-        this._label_state = new St.Label({ style_class: 'folder-progress-text',
+        this._label_state = new St.Label({ style_class: "folder-progress-text",
                                            x_expand: true,
                                            x_align: Clutter.ActorAlign.END,
                                            y_align: Clutter.ActorAlign.CENTER });
         this.actor.add_child(this._label_state);
-        this._statusIcon = new St.Icon({ style_class: 'folder-status-icon' });
+        this._statusIcon = new St.Icon({ style_class: "folder-status-icon" });
         this.actor.add_child(this._statusIcon);
 
         this._file = Gio.File.new_for_path(info.path);
@@ -143,15 +145,15 @@ const FolderMenuItem = new Lang.Class({
     _getIcon: function() {
         let file = Gio.File.new_for_path(this.info.path);
         try {
-            let query_info = file.query_info('standard::symbolic-icon', 0, null);
+            let query_info = file.query_info("standard::symbolic-icon", 0, null);
             return query_info.get_symbolic_icon();
         } catch(e) {
             if (e instanceof Gio.IOErrorEnum) {
               // return a generic icon
               if (!file.is_native())
-                return new Gio.ThemedIcon({name: 'folder-remote-symbolic'});
+                return new Gio.ThemedIcon({name: "folder-remote-symbolic"});
               else
-                return new Gio.ThemedIcon({name: 'folder-symbolic'});
+                return new Gio.ThemedIcon({name: "folder-symbolic"});
             } else {
                 throw e;
             }
@@ -175,10 +177,10 @@ const FolderMenuItem = new Lang.Class({
         this._label.text = label;
         if (this._soup_msg)
             _httpSession.cancel_message(this._soup_msg, Soup.Status.CANCELLED);
-        let query_uri = baseURI + '/rest/db/status?folder=' + this.info.id;
-        this._soup_msg = Soup.Message.new('GET', query_uri);
+        let query_uri = baseURI + "/rest/db/status?folder=" + this.info.id;
+        this._soup_msg = Soup.Message.new("GET", query_uri);
         if (apikey) {
-            this._soup_msg.request_headers.append('X-API-Key', apikey);
+            this._soup_msg.request_headers.append("X-API-Key", apikey);
         }
         _httpSession.queue_message(this._soup_msg, Lang.bind(this, this._folderReceived));
     },
@@ -186,28 +188,28 @@ const FolderMenuItem = new Lang.Class({
     setState: function(state, model) {
         if (state === "idle") {
             this._label_state.set_text("");
-            this._statusIcon.icon_name = '';
+            this._statusIcon.icon_name = "";
         } else if (state === "scanning") {
             this._label_state.set_text("");
-            this._statusIcon.icon_name = 'database';
+            this._statusIcon.icon_name = "database";
         } else if (state === "syncing") {
             let pct = this._syncPercentage(model);
             this._label_state.set_text("%d\u2009%%".format(pct));
-            this._statusIcon.icon_name = 'exchange';
+            this._statusIcon.icon_name = "exchange";
         } else if (state === "error") {
             this._label_state.set_text("");
-            this._statusIcon.icon_name = 'exclamation-triangle';
+            this._statusIcon.icon_name = "exclamation-triangle";
         } else if (state === "unknown") {
             this._label_state.set_text("");
-            this._statusIcon.icon_name = 'question';
+            this._statusIcon.icon_name = "question";
         } else {
             log("unknown syncthing state: " + state);
             this._label_state.set_text("");
-            this._statusIcon.icon_name = 'question';
+            this._statusIcon.icon_name = "question";
         }
         if (this.state !== state) {
             this.state = state;
-            this.emit('status-changed');
+            this.emit("status-changed");
         }
     },
 
@@ -217,7 +219,7 @@ const FolderMenuItem = new Lang.Class({
             // We cancelled the message.
             return;
         } else if (msg.status_code !== 200) {
-            log("Failed to obtain syncthing folder information for folder id '" + this.info.id + "'.");
+            log("Failed to obtain syncthing folder information for folder id \"" + this.info.id + "\".");
             this.setState("unknown", null);
             return;
         }
@@ -237,14 +239,14 @@ const FolderMenuItem = new Lang.Class({
         if (this._soup_msg)
             _httpSession.cancel_message(this._soup_msg, Soup.Status.CANCELLED);
         this.state = "DESTROY";
-        this.emit('status-changed');
+        this.emit("status-changed");
         this.parent();
     },
 });
 
 
 const SyncthingMenu = new Lang.Class({
-    Name: 'SyncthingMenu',
+    Name: "SyncthingMenu",
     Extends: PanelMenu.Button,
 
     _init: function() {
@@ -253,27 +255,27 @@ const SyncthingMenu = new Lang.Class({
         let box = new St.BoxLayout();
         this.actor.add_child(box);
 
-        this._syncthingIcon = new St.Icon({ icon_name: 'syncthing-logo-symbolic',
-                                          style_class: 'system-status-icon syncthing-logo-icon' });
+        this._syncthingIcon = new St.Icon({ icon_name: "syncthing-logo-symbolic",
+                                          style_class: "system-status-icon syncthing-logo-icon" });
         box.add_child(this._syncthingIcon);
 
-        this._statusIcon = new St.Icon({ style_class: 'system-status-icon syncthing-status-icon' });
+        this._statusIcon = new St.Icon({ style_class: "system-status-icon syncthing-status-icon" });
         box.add_child(this._statusIcon);
 
-        this.status_label = new St.Label({ style: 'font-size: 70%;',
+        this.status_label = new St.Label({ style: "font-size: 70%;",
                                          y_align: Clutter.ActorAlign.CENTER });
         box.add_child(this.status_label);
 
         this.item_switch = new PopupMenu.PopupSwitchMenuItem("Syncthing", false, null);
-        this.item_switch.connect('activate', Lang.bind(this, this._onSwitch));
+        this.item_switch.connect("activate", Lang.bind(this, this._onSwitch));
         this.menu.addMenuItem(this.item_switch);
 
         let icon = (parseFloat(Config.PACKAGE_VERSION.substr(0, Config.PACKAGE_VERSION.indexOf(".", 3))) < 3.26) ?
-            'emblem-system-symbolic'
-            : new Gio.ThemedIcon({ name: 'emblem-system-symbolic' });
+            "emblem-system-symbolic"
+            : new Gio.ThemedIcon({ name: "emblem-system-symbolic" });
 
         this.item_config = new PopupMenu.PopupImageMenuItem(_("Web Interface"), icon);
-        this.item_config.connect('activate', Lang.bind(this, this._onConfig));
+        this.item_config.connect("activate", Lang.bind(this, this._onConfig));
         this.menu.addMenuItem(this.item_config);
         this.item_config.setSensitive(false);
 
@@ -281,9 +283,9 @@ const SyncthingMenu = new Lang.Class({
 
         this.folder_list = new FolderList();
         this.menu.addMenuItem(this.folder_list);
-        this.folder_list.connect('status-changed', Lang.bind(this, this._onStatusChanged));
+        this.folder_list.connect("status-changed", Lang.bind(this, this._onStatusChanged));
 
-        Settings.connect('changed', Lang.bind(this, this._onSettingsChanged));
+        Settings.connect("changed", Lang.bind(this, this._onSettingsChanged));
         this._onSettingsChanged();
 
         this._isConnected = false;
@@ -292,9 +294,9 @@ const SyncthingMenu = new Lang.Class({
     },
 
     _onSettingsChanged: function(settings, key) {
-        this.externalBrowser = Settings.get_boolean('external-browser');
+        this.externalBrowser = Settings.get_boolean("external-browser");
 
-        if (Settings.get_boolean('autoconfig')) {
+        if (Settings.get_boolean("autoconfig")) {
             if (! this._configFileWatcher) {
                 this._onAutoConfigChanged(null);
                 this._configFileWatcher = new Filewatcher.ConfigFileWatcher(Lang.bind(this, this._onAutoConfigChanged));
@@ -304,18 +306,18 @@ const SyncthingMenu = new Lang.Class({
                 this._configFileWatcher.destroy();
                 this._configFileWatcher = null;
             }
-            this.baseURI = Settings.get_string('configuration-uri');
-            this.apikey = Settings.get_string('api-key');
+            this.baseURI = Settings.get_string("configuration-uri");
+            this.apikey = Settings.get_string("api-key");
         }
     },
 
     _onAutoConfigChanged: function(config) {
         if (config === null) {
-            this.baseURI = Settings.get_default_value('configuration-uri').unpack();
+            this.baseURI = Settings.get_default_value("configuration-uri").unpack();
             this.apikey = null;
         } else {
-            this.baseURI = config['uri'] || Settings.get_default_value('configuration-uri').unpack();
-            this.apikey = config['apikey'];
+            this.baseURI = config["uri"] || Settings.get_default_value("configuration-uri").unpack();
+            this.apikey = config["apikey"];
         }
     },
 
@@ -323,7 +325,7 @@ const SyncthingMenu = new Lang.Class({
         if (msg.status_code !== 200) {
             // Check whether the syncthing daemon does not respond due to startup stage.
             if (msg.status_code !== Soup.Status.CANT_CONNECT) {
-                log("Failed to connect to syncthing daemon at URI '" + baseURI + "': " + msg.status_code + " " + msg.reason_phrase);
+                log("Failed to connect to syncthing daemon at URI \"" + baseURI + "\": " + msg.status_code + " " + msg.reason_phrase);
                 //log("Response body: " + msg.response_body.data);
             }
             // Clear the state of each folder.
@@ -337,7 +339,7 @@ const SyncthingMenu = new Lang.Class({
         }
         let data = msg.response_body.data;
         let config = JSON.parse(data);
-        if (config !== null && 'version' in config && 'folders' in config && 'devices' in config) {
+        if (config !== null && "version" in config && "folders" in config && "devices" in config) {
             // This seems to be a valid syncthing connection.
             this.folder_list.update(baseURI, apikey, config);
             if (!this._isConnected) {
@@ -350,7 +352,7 @@ const SyncthingMenu = new Lang.Class({
     },
 
     _onConfig: function(actor, event) {
-        if (!this.externalBrowser && this.baseURI.startsWith('http://')) {
+        if (!this.externalBrowser && this.baseURI.startsWith("http://")) {
             this._openWebView();
         } else {
             let launchContext = global.create_app_launch_context(event.get_time(), -1);
@@ -364,23 +366,23 @@ const SyncthingMenu = new Lang.Class({
 
     _openWebView: function() {
         let working_dir = Me.dir.get_path();
-        let [ok, pid] = GLib.spawn_async(working_dir, ['gjs', 'webviewer.js'], null, GLib.SpawnFlags.SEARCH_PATH, null);
+        let [ok, pid] = GLib.spawn_async(working_dir, ["gjs", "webviewer.js"], null, GLib.SpawnFlags.SEARCH_PATH, null);
         GLib.spawn_close_pid(pid);
     },
 
     _onSwitch: function(actor, event) {
         if (actor.state) {
-            let argv = 'systemctl --user start syncthing.service';
-            let [ok, pid] = GLib.spawn_async(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
+            let argv = "systemctl --user start syncthing.service";
+            let [ok, pid] = GLib.spawn_async(null, argv.split(" "), null, GLib.SpawnFlags.SEARCH_PATH, null);
             GLib.spawn_close_pid(pid);
             this._timeoutManager.changeTimeout(1, 10);
         } else {
-            let argv = 'systemctl --user stop syncthing.service';
-            let [ok, pid] = GLib.spawn_async(null, argv.split(' '), null, GLib.SpawnFlags.SEARCH_PATH, null);
+            let argv = "systemctl --user stop syncthing.service";
+            let [ok, pid] = GLib.spawn_async(null, argv.split(" "), null, GLib.SpawnFlags.SEARCH_PATH, null);
             GLib.spawn_close_pid(pid);
             this._timeoutManager.changeTimeout(10, 10);
             // To prevent icon flickering we set _daemonRunning=false prematurely.
-            // Even if this proves to be wrong in the following _updateMenu(), we don't do any harm.
+            // Even if this proves to be wrong in the following _updateMenu(), we don"t do any harm.
             this._daemonRunning = false;
         }
         this._updateMenu();
@@ -389,9 +391,9 @@ const SyncthingMenu = new Lang.Class({
     _getSyncthingState: function() {
         if (this._childSource)
             return;
-        let argv = 'systemctl --user is-active syncthing.service';
+        let argv = "systemctl --user is-active syncthing.service";
         let flags = GLib.SpawnFlags.DO_NOT_REAP_CHILD | GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.STDOUT_TO_DEV_NULL;
-        let [ok, pid, in_fd, out_fd, err_fd]  = GLib.spawn_async(null, argv.split(' '), null, flags, null);
+        let [ok, pid, in_fd, out_fd, err_fd]  = GLib.spawn_async(null, argv.split(" "), null, flags, null);
         this._childSource = GLib.child_watch_add(GLib.PRIORITY_DEFAULT_IDLE, pid, Lang.bind(this, this._onSyncthingState));
     },
 
@@ -405,11 +407,11 @@ const SyncthingMenu = new Lang.Class({
 
     _updateMenu: function() {
         this._getSyncthingState();
-        // The current syncthing config is fetched from 'http://localhost:8384/rest/system/config' or similar
-        let config_uri = this.baseURI + '/rest/system/config';
-        let msg = Soup.Message.new('GET', config_uri);
+        // The current syncthing config is fetched from "http://localhost:8384/rest/system/config" or similar
+        let config_uri = this.baseURI + "/rest/system/config";
+        let msg = Soup.Message.new("GET", config_uri);
         if (this.apikey) {
-            msg.request_headers.append('X-API-Key', this.apikey);
+            msg.request_headers.append("X-API-Key", this.apikey);
         }
         _httpSession.queue_message(msg, Lang.bind(this, this._configReceived, this.baseURI, this.apikey));
     },
@@ -417,25 +419,25 @@ const SyncthingMenu = new Lang.Class({
     _onStatusChanged: function() {
         // This function is called whenever
         // 1) the status of the folder_list changes or
-        // 2) the systemd 'is-active' status changes (variable 'this._daemonRunning') or
-        // 3) the connection to the daemon (variable 'this._isConnected') changes.
+        // 2) the systemd "is-active" status changes (variable "this._daemonRunning") or
+        // 3) the connection to the daemon (variable "this._isConnected") changes.
         if (this._daemonRunning) {
-            //this._syncthingIcon.icon_name = 'syncthing-logo-symbolic';
+            //this._syncthingIcon.icon_name = "syncthing-logo-symbolic";
             this.item_switch.setToggleState(true);
             this.item_config.setSensitive(true);
             let state = this.folder_list.state;
-            if (state === 'error' || ! this._isConnected) {
-                this._statusIcon.icon_name = 'exclamation-triangle';
-            } else if (state === 'unknown')
-                this._statusIcon.icon_name = 'question';
-            else if (state === 'syncing')
-                this._statusIcon.icon_name = 'exchange';
+            if (state === "error" || ! this._isConnected) {
+                this._statusIcon.icon_name = "exclamation-triangle";
+            } else if (state === "unknown")
+                this._statusIcon.icon_name = "question";
+            else if (state === "syncing")
+                this._statusIcon.icon_name = "exchange";
             else
-                this._statusIcon.icon_name = '';
+                this._statusIcon.icon_name = "";
         } else {
             this.item_switch.setToggleState(false);
             this.item_config.setSensitive(false);
-            this._statusIcon.icon_name = 'pause';
+            this._statusIcon.icon_name = "pause";
         }
     },
 
@@ -451,7 +453,7 @@ const SyncthingMenu = new Lang.Class({
 
 
 const TimeoutManager = new Lang.Class({
-    Name: 'TimeoutManager',
+    Name: "TimeoutManager",
 
     // The TimeoutManager starts with a timespan of start seconds,
     // after which the function func is called and the timeout
@@ -496,7 +498,7 @@ const TimeoutManager = new Lang.Class({
 function init(extension) {
     Convenience.initTranslations(GETTEXT_DOMAIN);
     let icon_theme = imports.gi.Gtk.IconTheme.get_default();
-    icon_theme.append_search_path(extension.path + '/icons');
+    icon_theme.append_search_path(extension.path + "/icons");
 }
 
 
@@ -504,7 +506,7 @@ let _syncthing;
 
 function enable() {
     _syncthing = new SyncthingMenu();
-    Main.panel.addToStatusArea('syncthing', _syncthing);
+    Main.panel.addToStatusArea("syncthing", _syncthing);
 }
 
 

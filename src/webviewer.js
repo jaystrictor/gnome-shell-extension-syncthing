@@ -1,4 +1,5 @@
-'use strict';
+"use strict";
+
 const Gio = imports.gi.Gio;
 const Gtk = imports.gi.Gtk;
 const Lang = imports.lang;
@@ -6,10 +7,10 @@ const WebKit = imports.gi.WebKit2;
 
 function getCurrentDir() {
     let stack = (new Error()).stack;
-    let stackLine = stack.split('\n')[1];
+    let stackLine = stack.split("\n")[1];
     if (!stackLine)
         throw new Error("Could not find current file.");
-    let match = new RegExp('@(.+):\\d+').exec(stackLine);
+    let match = new RegExp("@(.+):\\d+").exec(stackLine);
     if (!match)
         throw new Error("Could not find current file.");
     let path = match[1];
@@ -21,9 +22,9 @@ const Filewatcher = imports.filewatcher;
 
 function getSettings() {
     let dir = getCurrentDir();
-    let schema = 'org.gnome.shell.extensions.syncthing';
+    let schema = "org.gnome.shell.extensions.syncthing";
     const GioSSS = Gio.SettingsSchemaSource;
-    let schemaDir = dir.get_child('schemas');
+    let schemaDir = dir.get_child("schemas");
     let schemaSource = GioSSS.new_from_directory(schemaDir.get_path(),
                                                  GioSSS.get_default(),
                                                  false);
@@ -35,19 +36,19 @@ function getSettings() {
 const Settings = getSettings();
 
 const SyncthingWindow = new Lang.Class({
-    Name: 'SyncthingWindow',
+    Name: "SyncthingWindow",
     Extends: Gtk.ApplicationWindow,
 
     _init: function(application) {
         this.parent({ application: application });
-        this.set_icon_from_file('icons/syncthing-logo.svg');
+        this.set_icon_from_file("icons/syncthing-logo.svg");
         this.set_default_size(1300,800);
         this.set_wmclass ("Syncthing", "Syncthing");
         this.title = "Syncthing";
 
         this._webView = new WebKit.WebView();
-        this._webView.connect('context-menu', Lang.bind(this, this._onContextMenu));
-        this._webView.connect('decide-policy', Lang.bind(this, this._onDecidePolicy));
+        this._webView.connect("context-menu", Lang.bind(this, this._onContextMenu));
+        this._webView.connect("decide-policy", Lang.bind(this, this._onDecidePolicy));
         this.add(this._webView);
         this._webView.show();
     },
@@ -56,7 +57,7 @@ const SyncthingWindow = new Lang.Class({
         let request = WebKit.URIRequest.new(uri);
         if (apikey) {
             let headers = request.get_http_headers();
-            headers.append('X-API-Key', apikey);
+            headers.append("X-API-Key", apikey);
         }
         this._webView.load_request(request);
     },
@@ -87,11 +88,11 @@ const SyncthingWindow = new Lang.Class({
 });
 
 const SyncthingViewer = new Lang.Class({
-    Name: 'SyncthingViewer',
+    Name: "SyncthingViewer",
     Extends: Gtk.Application,
 
     _init: function() {
-        this.parent({ application_id: 'net.syncthing.gtk.webview' });
+        this.parent({ application_id: "net.syncthing.gtk.webview" });
     },
 
 
@@ -106,26 +107,26 @@ const SyncthingViewer = new Lang.Class({
     vfunc_startup: function() {
         this.parent();
         this._window = new SyncthingWindow(this);
-        Settings.connect('changed', Lang.bind(this, this._onSettingsChanged));
+        Settings.connect("changed", Lang.bind(this, this._onSettingsChanged));
         this._onSettingsChanged();
 
-        this._addSimpleAction('quit', Lang.bind(this, function() {this.quit();} ));
+        this._addSimpleAction("quit", Lang.bind(this, function() {this.quit();} ));
         // create the GMenu
         let menumodel = new Gio.Menu();
-        menumodel.append("Quit", 'app.quit');
+        menumodel.append("Quit", "app.quit");
         menumodel.freeze();
         this.set_app_menu(menumodel);
     },
 
     _addSimpleAction: function(name, callback) {
         let action = new Gio.SimpleAction({ name: name });
-        action.connect('activate', callback);
+        action.connect("activate", callback);
         this.add_action(action);
         return action;
     },
 
     _onSettingsChanged: function(settings, key) {
-        if (Settings.get_boolean('autoconfig')) {
+        if (Settings.get_boolean("autoconfig")) {
             if (! this._configFileWatcher) {
                 this._configFileWatcher = new Filewatcher.ConfigFileWatcher(Lang.bind(this, this._onAutoConfigChanged));
             }
@@ -134,8 +135,8 @@ const SyncthingViewer = new Lang.Class({
                 this._configFileWatcher.destroy();
                 this._configFileWatcher = null;
             }
-            let uri = Settings.get_string('configuration-uri');
-            let apikey = Settings.get_string('api-key');
+            let uri = Settings.get_string("configuration-uri");
+            let apikey = Settings.get_string("api-key");
             this._changeConfig(uri, apikey);
         }
     },
@@ -144,10 +145,10 @@ const SyncthingViewer = new Lang.Class({
         let uri;
         let apikey = null;
         if (config === null) {
-            uri = Settings.get_default_value('configuration-uri').unpack();
+            uri = Settings.get_default_value("configuration-uri").unpack();
         } else {
-            uri = config['uri'] || Settings.get_default_value('configuration-uri').unpack();
-            apikey = config['apikey'];
+            uri = config["uri"] || Settings.get_default_value("configuration-uri").unpack();
+            apikey = config["apikey"];
         }
         this._changeConfig(uri, apikey);
     },

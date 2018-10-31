@@ -25,6 +25,7 @@ const Me = ExtensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;
 const Settings = Convenience.getSettings();
 const Filewatcher = Me.imports.filewatcher;
+const Systemd = Me.imports.systemd;
 
 function myLog(msg) {
     log("[syncthingicon] " + msg);
@@ -256,11 +257,16 @@ const SyncthingMenu = new Lang.Class({
     _init: function() {
         this.parent(0.0, "Syncthing", false);
 
+        this._systemd = new Systemd.Control(64);
+
         this._initButton();
         this._initMenu();
 
         Settings.connect("changed", Lang.bind(this, this._onSettingsChanged));
         this._onSettingsChanged();
+
+        this._systemd.connect("state-changed", Lang.bind(this, this._onSystemdStateChanged));
+        this._systemd.update();
 
         this._isConnected = false;
         this._updateMenu();
@@ -285,9 +291,7 @@ const SyncthingMenu = new Lang.Class({
 
     _initMenu: function() {
         // 1. Syncthing On/Off Switch
-        this.item_switch = new PopupMenu.PopupSwitchMenuItem("Syncthing", false, null);
-        this.item_switch.connect("activate", Lang.bind(this, this._onSwitch));
-        this.menu.addMenuItem(this.item_switch);
+        this.item_switch = null;
 
         // 2. Web Interface Button
         let icon = (parseFloat(Config.PACKAGE_VERSION.substr(0, Config.PACKAGE_VERSION.indexOf(".", 3))) < 3.26) ?
@@ -393,41 +397,43 @@ const SyncthingMenu = new Lang.Class({
 
     _onSwitch: function(actor, event) {
         if (actor.state) {
-            let argv = "systemctl --user start syncthing.service";
-            let [ok, pid] = GLib.spawn_async(null, argv.split(" "), null, GLib.SpawnFlags.SEARCH_PATH, null);
-            GLib.spawn_close_pid(pid);
-            this._timeoutManager.changeTimeout(1, 10);
+            this._systemd.startService();
+            this._systemd.setUpdateInterval(1, 8);
         } else {
-            let argv = "systemctl --user stop syncthing.service";
-            let [ok, pid] = GLib.spawn_async(null, argv.split(" "), null, GLib.SpawnFlags.SEARCH_PATH, null);
-            GLib.spawn_close_pid(pid);
-            this._timeoutManager.changeTimeout(10, 10);
-            // To prevent icon flickering we set _daemonRunning=false prematurely.
-            // Even if this proves to be wrong in the following _updateMenu(), we don"t do any harm.
-            this._daemonRunning = false;
+            this._systemd.stopService();
+            this._systemd.setUpdateInterval(8, 64);
         }
-        this._updateMenu();
+        this._systemd.update();
     },
 
-    _getSyncthingState: function() {
-        if (this._childSource)
-            return;
-        let argv = "systemctl --user is-active syncthing.service";
-        let flags = GLib.SpawnFlags.DO_NOT_REAP_CHILD | GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.STDOUT_TO_DEV_NULL;
-        let [ok, pid, in_fd, out_fd, err_fd]  = GLib.spawn_async(null, argv.split(" "), null, flags, null);
-        this._childSource = GLib.child_watch_add(GLib.PRIORITY_DEFAULT_IDLE, pid, Lang.bind(this, this._onSyncthingState));
-    },
-
-    _onSyncthingState: function(pid, status) {
-        GLib.Source.remove(this._childSource);
-        this._childSource = null;
-        GLib.spawn_close_pid(pid);
-        this._daemonRunning = (status === 0);
+    _onSystemdStateChanged: function(control, state) {
+        switch (state) {
+            case "systemd-not-available":
+            case "unit-not-loaded":
+                myLog("systemd user unit \"syncthing.service\" not loaded");
+                if (this.item_switch !== null) {
+                    this.item_switch.disconnect(this._switchNotifyId);
+                    this.item_switch.destroy();
+                    this.item_switch = null;
+                }
+                break;
+            case "inactive":
+            case "active":
+                if (this.item_switch === null) {
+                    this.item_switch = new PopupMenu.PopupSwitchMenuItem("Syncthing", false, null);
+                    this._switchNotifyId = this.item_switch.connect("activate", Lang.bind(this, this._onSwitch));
+                    this.menu.addMenuItem(this.item_switch, 0);
+                }
+                this.item_switch.setToggleState(state === "active");
+                break;
+            default:
+                throw "Unknown systemd state: " + state;
+        }
+        this.systemd_state = state;
         this._onStatusChanged();
     },
 
     _updateMenu: function() {
-        this._getSyncthingState();
         // The current syncthing config is fetched from "http://localhost:8384/rest/system/config" or similar
         let config_uri = this.baseURI + "/rest/system/config";
         let msg = Soup.Message.new("GET", config_uri);
@@ -440,11 +446,14 @@ const SyncthingMenu = new Lang.Class({
     _onStatusChanged: function() {
         // This function is called whenever
         // 1) the status of the folder_list changes or
-        // 2) the systemd "is-active" status changes (variable "this._daemonRunning") or
+        // 2) the systemd status changes (variable "this.systemd_state") or
         // 3) the connection to the daemon (variable "this._isConnected") changes.
-        if (this._daemonRunning) {
+        this._updateStatusIcon();
+    },
+
+    _updateStatusIcon: function() {
+        if (this.systemd_state === "active") {
             //this._syncthingIcon.icon_name = "syncthing-logo-symbolic";
-            this.item_switch.setToggleState(true);
             this.item_config.setSensitive(true);
             let state = this.folder_list.state;
             if (state === "error" || ! this._isConnected) {
@@ -456,7 +465,6 @@ const SyncthingMenu = new Lang.Class({
             else
                 this._statusIcon.icon_name = "";
         } else {
-            this.item_switch.setToggleState(false);
             this.item_config.setSensitive(false);
             this._statusIcon.icon_name = "pause";
         }

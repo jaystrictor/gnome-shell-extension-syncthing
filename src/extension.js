@@ -256,6 +256,18 @@ const SyncthingMenu = new Lang.Class({
     _init: function() {
         this.parent(0.0, "Syncthing", false);
 
+        this._initButton();
+        this._initMenu();
+
+        Settings.connect("changed", Lang.bind(this, this._onSettingsChanged));
+        this._onSettingsChanged();
+
+        this._isConnected = false;
+        this._updateMenu();
+        this._timeoutManager = new TimeoutManager(1, 10, Lang.bind(this, this._updateMenu));
+    },
+
+    _initButton: function() {
         let box = new St.BoxLayout();
         this.actor.add_child(box);
 
@@ -269,11 +281,15 @@ const SyncthingMenu = new Lang.Class({
         this.status_label = new St.Label({ style: "font-size: 70%;",
                                          y_align: Clutter.ActorAlign.CENTER });
         box.add_child(this.status_label);
+    },
 
+    _initMenu: function() {
+        // 1. Syncthing On/Off Switch
         this.item_switch = new PopupMenu.PopupSwitchMenuItem("Syncthing", false, null);
         this.item_switch.connect("activate", Lang.bind(this, this._onSwitch));
         this.menu.addMenuItem(this.item_switch);
 
+        // 2. Web Interface Button
         let icon = (parseFloat(Config.PACKAGE_VERSION.substr(0, Config.PACKAGE_VERSION.indexOf(".", 3))) < 3.26) ?
             "emblem-system-symbolic"
             : new Gio.ThemedIcon({ name: "emblem-system-symbolic" });
@@ -283,18 +299,13 @@ const SyncthingMenu = new Lang.Class({
         this.menu.addMenuItem(this.item_config);
         this.item_config.setSensitive(false);
 
+        // 3. Separator
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
+        // 4. Folder List
         this.folder_list = new FolderList();
         this.menu.addMenuItem(this.folder_list);
         this.folder_list.connect("status-changed", Lang.bind(this, this._onStatusChanged));
-
-        Settings.connect("changed", Lang.bind(this, this._onSettingsChanged));
-        this._onSettingsChanged();
-
-        this._isConnected = false;
-        this._updateMenu();
-        this._timeoutManager = new TimeoutManager(1, 10, Lang.bind(this, this._updateMenu));
     },
 
     _onSettingsChanged: function(settings, key) {

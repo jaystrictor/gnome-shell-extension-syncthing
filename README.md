@@ -54,6 +54,10 @@ Alternatively, you can use Gnome Tweak Tool to configure the extension.
 
 For debugging purposes you should look at the log output of gnome-shell. If you have systemd, the following command should print all the important log messages:
 ```sh
+journalctl -b /usr/bin/gnome-shell -g syncthingicon
+```
+If this gives you `Compiled without pattern matching support`, then instead use this:
+```sh
 journalctl -b /usr/bin/gnome-shell | grep syncthingicon
 ```
 

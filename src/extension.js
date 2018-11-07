@@ -14,8 +14,6 @@ const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 
 
-const _httpSession = new Soup.Session();
-
 const GETTEXT_DOMAIN = "gnome-shell-extension-syncthing";
 const Gettext = imports.gettext.domain(GETTEXT_DOMAIN);
 const _ = Gettext.gettext;
@@ -25,6 +23,7 @@ const Me = ExtensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;
 const Settings = Convenience.getSettings();
 const Filewatcher = Me.imports.filewatcher;
+const SyncthingApi = Me.imports.syncthing_api;
 const Systemd = Me.imports.systemd;
 
 function myLog(msg) {
@@ -35,48 +34,31 @@ const FolderList = new Lang.Class({
     Name: "FolderList",
     Extends: PopupMenu.PopupMenuSection,
 
-    _init: function() {
+    _init: function(api) {
         this.parent();
+        this._api = api;
         this.folder_ids = [];
+        // this.folders is a Map() that maps: (id: String) -> menuitem: FolderMenuItem
         this.folders = new Map();
-        this.state = "idle";
+        this._folderAddedNotifyId = this._api.connect("folder-added", Lang.bind(this, this._addFolder));
+        this._folderRemovedNotifyId = this._api.connect("folder-removed", Lang.bind(this, this._removeFolder));
     },
 
-    update: function(baseURI, apikey, config) {
-        let folder_ids_clone = this.folder_ids.slice();
-        for (let i = 0; i < config.folders.length; i++) {
-            let folder_config = config.folders[i];
-            let id = folder_config.id;
-            if (this.folder_ids.indexOf(id) !== -1) {
-                // "id" is already in this.folders_ids, just update.
-                let position = folder_ids_clone.indexOf(id);
-                folder_ids_clone.splice(position, 1);
-            } else {
-                // Add "id" to folder list.
-                this._addFolder(id, folder_config);
-            }
-            this.folders.get(id).update(baseURI, apikey, folder_config);
-        }
-        for (let j = 0; j < folder_ids_clone.length; j++) {
-            let id = folder_ids_clone[j];
-            // Remove "id" from folder list.
-            this._removeFolder(id);
-        }
-    },
-
-    _addFolder: function(id, folder_config) {
+    _addFolder: function(session, folder) {
+        let id = folder.id;
         let position = this._sortedIndex(id);
         this.folder_ids.splice(position, 0, id);
-        let menuitem = new FolderMenuItem(folder_config);
+        let menuitem = new FolderMenuItem(folder);
         this.addMenuItem(menuitem, position);
         this.folders.set(id, menuitem);
-        menuitem.connect("status-changed", Lang.bind(this, this._folderChanged));
     },
 
-    _removeFolder: function(id) {
+    _removeFolder: function(session, folder) {
+        let id = folder.id;
         let position = this.folder_ids.indexOf(id);
-        this.folder_ids.splice(position, 1);
-        this.folders.get(id).destroy();
+        let removed = this.folder_ids.splice(position, 1);
+        let menuitem = this.folders.get(removed[0]);
+        menuitem.destroy();
         this.folders.delete(id);
     },
 
@@ -93,30 +75,15 @@ const FolderList = new Lang.Class({
         return low;
     },
 
-    _folderChanged: function() {
-        let states = this.folder_ids.map(Lang.bind(this, function(id){
-            return this.folders.get(id).state;
-        }));
-        let state;
-        if (states.indexOf("error") !== -1)
-            state = "error";
-        else if (states.indexOf("unknown") !== -1)
-            state = "unknown";
-        else if (states.indexOf("syncing") !== -1)
-            state = "syncing";
-        else
-            state = "idle";
-        if (state == this.state)
-            return;
-        this.state = state;
-        this.emit("status-changed");
-    },
-
-    clearState: function() {
-        for (let i = 0; i < this.folder_ids.length; i++) {
-            let folder = this.folders.get(this.folder_ids[i]);
-            folder.setState("unknown", null);
+    destroy: function() {
+        if (this._folderAddedNotifyId > 0) {
+            this._api.disconnect(this._folderAddedNotifyId);
         }
+        if (this._folderRemovedNotifyId > 0) {
+            this._api.disconnect(this._folderRemovedNotifyId);
+        }
+        this._api = null;
+        this.parent();
     },
 });
 
@@ -124,15 +91,14 @@ const FolderMenuItem = new Lang.Class({
     Name: "FolderMenuItem",
     Extends: PopupMenu.PopupBaseMenuItem,
 
-    _init: function (info) {
+    _init: function (folder) {
         this.parent();
-        this.state = "unknown";
-        this.info = info;
-        this._icon = new St.Icon({ gicon: this._getIcon(),
+        this.folder = folder;
+        this._icon = new St.Icon({ gicon: this._getIcon(folder.path),
                                    style_class: "popup-menu-icon" });
         this.actor.add_child(this._icon);
 
-        this._label = new St.Label({ text: info.id });
+        this._label = new St.Label({ text: folder.label });
         this.actor.add_child(this._label);
         this.actor.label_actor = this._label;
 
@@ -144,11 +110,16 @@ const FolderMenuItem = new Lang.Class({
         this._statusIcon = new St.Icon({ style_class: "folder-status-icon" });
         this.actor.add_child(this._statusIcon);
 
-        this._file = Gio.File.new_for_path(info.path);
+        this._folderStateChangedNotifyId = this.folder.connect("state-changed", Lang.bind(this, this._folderStateChanged));
+        this._folderLabelChangedNotifyId = this.folder.connect("label-changed", Lang.bind(this, this._folderLabelChanged));
+        this._folderPathChangedNotifyId = this.folder.connect("path-changed", Lang.bind(this, this._folderPathChanged));
     },
 
-    _getIcon: function() {
-        let file = Gio.File.new_for_path(this.info.path);
+    _getIcon: function(path) {
+        if (! path) {
+            return new Gio.ThemedIcon({ name: "folder-symbolic" });
+        }
+        let file = Gio.File.new_for_path(path);
         try {
             let query_info = file.query_info("standard::symbolic-icon", 0, null);
             return query_info.get_symbolic_icon();
@@ -166,7 +137,10 @@ const FolderMenuItem = new Lang.Class({
     },
 
     activate: function(event) {
-        let uri = this._file.get_uri();
+        let path = this.folder.path;
+        if (! path)
+            return;
+        let uri = Gio.File.new_for_path(path).get_uri();
         let launchContext = global.create_app_launch_context(event.get_time(), -1);
         try {
             Gio.AppInfo.launch_default_for_uri(uri, launchContext);
@@ -177,20 +151,15 @@ const FolderMenuItem = new Lang.Class({
         this.parent(event);
     },
 
-    update: function(baseURI, apikey, folderConfig) {
-        let label = (folderConfig.label !== "" ? folderConfig.label : folderConfig.id);
-        this._label.text = label;
-        if (this._soup_msg)
-            _httpSession.cancel_message(this._soup_msg, Soup.Status.CANCELLED);
-        let query_uri = baseURI + "/rest/db/status?folder=" + this.info.id;
-        this._soup_msg = Soup.Message.new("GET", query_uri);
-        if (apikey) {
-            this._soup_msg.request_headers.append("X-API-Key", apikey);
-        }
-        _httpSession.queue_message(this._soup_msg, Lang.bind(this, this._folderReceived));
+    _folderPathChanged: function(folder, path) {
+        this._icon.gicon = this._getIcon(path);
     },
 
-    setState: function(state, model) {
+    _folderLabelChanged: function(folder, label) {
+        this._label.text = label;
+    },
+
+    _folderStateChanged: function(folder, state) {
         if (state === "idle") {
             this._label_state.set_text("");
             this._statusIcon.icon_name = "";
@@ -208,30 +177,10 @@ const FolderMenuItem = new Lang.Class({
             this._label_state.set_text("");
             this._statusIcon.icon_name = "question";
         } else {
-            myLog("unknown syncthing state: " + state);
+            myLog("unknown syncthing folder state: " + state);
             this._label_state.set_text("");
             this._statusIcon.icon_name = "question";
         }
-        if (this.state !== state) {
-            this.state = state;
-            this.emit("status-changed");
-        }
-    },
-
-    _folderReceived: function(session, msg) {
-        this._soup_msg = null;
-        if (msg.status_code === Soup.Status.CANCELLED) {
-            // We cancelled the message.
-            return;
-        } else if (msg.status_code !== 200) {
-            myLog("Failed to obtain syncthing folder information for folder id \"" + this.info.id + "\".");
-            this.setState("unknown", null);
-            return;
-        }
-        let data = msg.response_body.data;
-        let model = JSON.parse(data);
-        let state = model.state;
-        this.setState(state, model);
     },
 
     _syncPercentage: function(model) {
@@ -241,10 +190,16 @@ const FolderMenuItem = new Lang.Class({
     },
 
     destroy: function() {
-        if (this._soup_msg)
-            _httpSession.cancel_message(this._soup_msg, Soup.Status.CANCELLED);
-        this.state = "DESTROY";
-        this.emit("status-changed");
+        if (this._folderStateChangedNotifyId > 0) {
+            this.folder.disconnect(this._folderStateChangedNotifyId);
+        }
+        if (this._folderLabelChangedNotifyId > 0) {
+            this.folder.disconnect(this._folderLabelChangedNotifyId);
+        }
+        if (this._folderPathChangedNotifyId > 0) {
+            this.folder.disconnect(this._folderPathChangedNotifyId);
+        }
+        this.folder = null;
         this.parent();
     },
 });
@@ -257,20 +212,21 @@ const SyncthingMenu = new Lang.Class({
     _init: function() {
         this.parent(0.0, "Syncthing", false);
 
+        this._api = new SyncthingApi.SyncthingSession();
         this._systemd = new Systemd.Control(64);
 
         this._initButton();
         this._initMenu();
 
-        Settings.connect("changed", Lang.bind(this, this._onSettingsChanged));
-        this._onSettingsChanged();
+        this.api_state = "disconnected";
+        this._api.connect("connection-state-changed", Lang.bind(this, this._onApiStateChanged));
 
+        this.systemd_state = "systemd-not-available";
         this._systemd.connect("state-changed", Lang.bind(this, this._onSystemdStateChanged));
         this._systemd.update();
 
-        this._isConnected = false;
-        this._updateMenu();
-        this._timeoutManager = new TimeoutManager(1, 10, Lang.bind(this, this._updateMenu));
+        Settings.connect("changed", Lang.bind(this, this._onSettingsChanged));
+        this._onSettingsChanged();
     },
 
     _initButton: function() {
@@ -307,9 +263,8 @@ const SyncthingMenu = new Lang.Class({
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
         // 4. Folder List
-        this.folder_list = new FolderList();
+        this.folder_list = new FolderList(this._api);
         this.menu.addMenuItem(this.folder_list);
-        this.folder_list.connect("status-changed", Lang.bind(this, this._onStatusChanged));
     },
 
     _onSettingsChanged: function(settings, key) {
@@ -328,52 +283,20 @@ const SyncthingMenu = new Lang.Class({
             this.baseURI = Settings.get_string("configuration-uri");
             this.apikey = Settings.get_string("api-key");
         }
+
+        this._api.setParams(this.baseURI, this.apikey);
     },
 
     _onAutoConfigChanged: function(config) {
         if (config === null) {
             this.baseURI = Settings.get_default_value("configuration-uri").unpack();
-            this.apikey = null;
+            this.apikey = Settings.get_default_value("api-key").unpack();
         } else {
             this.baseURI = config["uri"] || Settings.get_default_value("configuration-uri").unpack();
             this.apikey = config["apikey"];
         }
-    },
 
-    _configReceived: function(session, msg, baseURI, apikey) {
-        if (msg.status_code !== 200) {
-            // Check whether the syncthing daemon does not respond due to startup stage.
-            if (msg.status_code !== Soup.Status.CANT_CONNECT) {
-                myLog("Failed to connect to syncthing daemon at URI \"" + baseURI + "\": " + msg.status_code + " " + msg.reason_phrase);
-                if (msg.status_code === Soup.Status.SSL_FAILED) {
-                    myLog("TLS is currently not supported.");
-                } else if (msg.response_body.data === "CSRF Error\n") {
-                    myLog("CSRF Error. Please verify your API key.");
-                } else {
-                    myLog("Response body: " + msg.response_body.data);
-                }
-            }
-            // Clear the state of each folder.
-            this.folder_list.clearState();
-            if (this._isConnected) {
-                this._isConnected = false;
-                this._onStatusChanged();
-            }
-            // Do not update the folders of the folder list.
-            return;
-        }
-        let data = msg.response_body.data;
-        let config = JSON.parse(data);
-        if (config !== null && "version" in config && "folders" in config && "devices" in config) {
-            // This seems to be a valid syncthing connection.
-            this.folder_list.update(baseURI, apikey, config);
-            if (!this._isConnected) {
-                this._isConnected = true;
-                this._onStatusChanged();
-            }
-        } else {
-            myLog("Connection to syncthing daemon responded with unparseable data.");
-        }
+        this._api.setParams(this.baseURI, this.apikey);
     },
 
     _onConfig: function(actor, event) {
@@ -399,11 +322,14 @@ const SyncthingMenu = new Lang.Class({
         if (actor.state) {
             this._systemd.startService();
             this._systemd.setUpdateInterval(1, 8);
+            this._api.setUpdateInterval(1, 64);
         } else {
             this._systemd.stopService();
             this._systemd.setUpdateInterval(8, 64);
+            this._api.setUpdateInterval(1, 64);
         }
         this._systemd.update();
+        this._api.update();
     },
 
     _onSystemdStateChanged: function(control, state) {
@@ -430,96 +356,42 @@ const SyncthingMenu = new Lang.Class({
                 throw "Unknown systemd state: " + state;
         }
         this.systemd_state = state;
-        this._onStatusChanged();
+        this._updateStatusIcon();
     },
 
-    _updateMenu: function() {
-        // The current syncthing config is fetched from "http://localhost:8384/rest/system/config" or similar
-        let config_uri = this.baseURI + "/rest/system/config";
-        let msg = Soup.Message.new("GET", config_uri);
-        if (this.apikey) {
-            msg.request_headers.append("X-API-Key", this.apikey);
+    _onApiStateChanged: function(session, state) {
+        switch (state) {
+            case "connected":
+                this.item_config.setSensitive(true);
+                break;
+            case "disconnected":
+                this.item_config.setSensitive(false);
+                break;
+            default:
+                throw "Unknown API connection state: " + state;
         }
-        _httpSession.queue_message(msg, Lang.bind(this, this._configReceived, this.baseURI, this.apikey));
-    },
-
-    _onStatusChanged: function() {
-        // This function is called whenever
-        // 1) the status of the folder_list changes or
-        // 2) the systemd status changes (variable "this.systemd_state") or
-        // 3) the connection to the daemon (variable "this._isConnected") changes.
+        this.api_state = state;
         this._updateStatusIcon();
     },
 
     _updateStatusIcon: function() {
-        if (this.systemd_state === "active") {
-            //this._syncthingIcon.icon_name = "syncthing-logo-symbolic";
-            this.item_config.setSensitive(true);
-            let state = this.folder_list.state;
-            if (state === "error" || ! this._isConnected) {
-                this._statusIcon.icon_name = "exclamation-triangle";
-            } else if (state === "unknown")
-                this._statusIcon.icon_name = "question";
-            else if (state === "syncing")
-                this._statusIcon.icon_name = "exchange";
-            else
-                this._statusIcon.icon_name = "";
+        if (this.api_state === "connected") {
+            this._statusIcon.icon_name = "";
+        } else if (this.systemd_state !== "inactive") {
+            this._statusIcon.icon_name = "exclamation-triangle";
         } else {
-            this.item_config.setSensitive(false);
             this._statusIcon.icon_name = "pause";
         }
     },
 
     destroy: function() {
-        this._timeoutManager.cancel();
-        if (this._childSource)
-            GLib.Source.remove(this._childSource);
+        if (this._api)
+            this._api.destroy();
+        if (this._systemd)
+            this._systemd.destroy();
         if (this._configFileWatcher)
             this._configFileWatcher.destroy();
         this.parent();
-    },
-});
-
-
-const TimeoutManager = new Lang.Class({
-    Name: "TimeoutManager",
-
-    // The TimeoutManager starts with a timespan of start seconds,
-    // after which the function func is called and the timeout
-    // is exponentially expanded to 2*start, 2*2*start, etc. seconds.
-    // When the timeout overflows end seconds,
-    // it is set to the final value of end seconds.
-    _init: function(start, end, func) {
-        this._current = start;
-        this.end = end;
-        this.func = func;
-        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, start, Lang.bind(this, this._callback));
-    },
-
-    changeTimeout: function(start, end) {
-        GLib.Source.remove(this._source);
-        this._current = start;
-        this.end = end;
-        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, start, Lang.bind(this, this._callback));
-    },
-
-    _callback: function() {
-        this.func();
-
-        if (this._current === this.end) {
-            return GLib.SOURCE_CONTINUE;
-        }
-        // exponential backoff
-        this._current = this._current * 2;
-        if (this._current > this.end) {
-            this._current = this.end;
-        }
-        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this._current, Lang.bind(this, this._callback));
-        return GLib.SOURCE_REMOVE;
-    },
-
-    cancel: function() {
-        GLib.Source.remove(this._source);
     },
 });
 

@@ -225,6 +225,8 @@ const SyncthingMenu = new Lang.Class({
         this._systemd.connect("state-changed", Lang.bind(this, this._onSystemdStateChanged));
         this._systemd.update();
 
+        this.menu.connect("open-state-changed", Lang.bind(this, this._menuOpenStateChanged));
+
         Settings.connect("changed", Lang.bind(this, this._onSettingsChanged));
         this._onSettingsChanged();
     },
@@ -265,6 +267,18 @@ const SyncthingMenu = new Lang.Class({
         // 4. Folder List
         this.folder_list = new FolderList(this._api);
         this.menu.addMenuItem(this.folder_list);
+    },
+
+    _menuOpenStateChanged: function(menu, open) {
+        if (open) {
+            // When the menu is open, we want to get quick updates.
+            this._systemd.setUpdateInterval(1, 8);
+            this._api.setUpdateInterval(1, 8);
+        } else {
+            // When the menu is closed, we can wait longer.
+            this._systemd.setUpdateInterval(8, 64);
+            this._api.setUpdateInterval(8, 64);
+        }
     },
 
     _onSettingsChanged: function(settings, key) {

@@ -343,15 +343,20 @@ var SyncthingSession = new Lang.Class({
         this.lastTotal = null;
         this._setUpDownState("none");
         this.cancelAllUpdates();
-        this._timeoutManager.cancel();
+        this._timeoutManager.stop();
         for (let folder of this.folders.values()) {
             this.emit("folder-removed", folder);
         }
         this.folders = new Map();
     },
 
+    setUpdateInterval: function(start, end) {
+        this._timeoutManager.changeTimeout(start, end);
+    },
+
     restart: function(start = 1, end = 64) {
         this._timeoutManager.changeTimeout(start, end);
+        this._timeoutManager.start();
     },
 
     cancelAllUpdates: function() {
@@ -375,7 +380,7 @@ var SyncthingSession = new Lang.Class({
 
     destroy: function() {
         this.cancelAllUpdates();
-        this._timeoutManager.cancel();
+        this._timeoutManager.stop();
     },
 });
 
@@ -384,40 +389,51 @@ var SyncthingSession = new Lang.Class({
 const TimeoutManager = new Lang.Class({
     Name: "TimeoutManager",
 
-    // The TimeoutManager starts with a timespan of start seconds,
+    // The TimeoutManager starts with a timespan of minimum seconds,
     // after which the function func is called and the timeout
-    // is exponentially expanded to 2*start, 2*2*start, etc. seconds.
-    // When the timeout overflows end seconds,
-    // it is set to the final value of end seconds.
-    _init: function(func) {
+    // is exponentially expanded to 2*minimum, 2*2*minimum, etc. seconds.
+    // When the timeout overflows maximum seconds,
+    // it is set to the final value of maximum seconds.
+    _init: function(func, minimum=1, maximum=1) {
         this.func = func;
+        this.minimum = minimum;
+        this.maximum = maximum;
     },
 
-    changeTimeout: function(start, end) {
+    changeTimeout: function(minimum, maximum) {
+        this.minimum = minimum;
+        this.maximum = maximum;
+
         if (this._source) {
             GLib.Source.remove(this._source);
+            this._current = this.minimum;
+            this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this._current, Lang.bind(this, this._callback));
         }
-        this._current = start;
-        this.end = end;
-        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, start, Lang.bind(this, this._callback));
     },
 
     _callback: function() {
         this.func();
 
-        if (this._current === this.end) {
+        if (this._current === this.maximum) {
             return GLib.SOURCE_CONTINUE;
         }
         // exponential backoff
         this._current = this._current * 2;
-        if (this._current > this.end) {
-            this._current = this.end;
+        if (this._current > this.maximum) {
+            this._current = this.maximum;
         }
         this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this._current, Lang.bind(this, this._callback));
         return GLib.SOURCE_REMOVE;
     },
 
-    cancel: function() {
+    start: function() {
+        if (! this._source) {
+            this._current = this.minimum;
+            this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this._current, Lang.bind(this, this._callback));
+        }
+    },
+
+    stop: function() {
         if (this._source) {
             GLib.Source.remove(this._source);
             this._source = null;

@@ -356,6 +356,7 @@ const SyncthingMenu = new Lang.Class({
                     this.item_switch.destroy();
                     this.item_switch = null;
                 }
+                this._api.start();
                 break;
             case "inactive":
             case "active":
@@ -366,7 +367,7 @@ const SyncthingMenu = new Lang.Class({
                 }
                 if (state === "active") {
                     this.item_switch.setToggleState(true);
-                    this._api.restart();
+                    this._api.start();
                 } else {
                     this.item_switch.setToggleState(false);
                     this._api.stop();

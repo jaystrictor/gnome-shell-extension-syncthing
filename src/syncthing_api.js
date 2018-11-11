@@ -354,8 +354,7 @@ var SyncthingSession = new Lang.Class({
         this._timeoutManager.changeTimeout(start, end);
     },
 
-    restart: function(start = 1, end = 64) {
-        this._timeoutManager.changeTimeout(start, end);
+    start: function() {
         this._timeoutManager.start();
     },
 

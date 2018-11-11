@@ -287,7 +287,10 @@ const SyncthingMenu = new Lang.Class({
         if (Settings.get_boolean("autoconfig")) {
             if (! this._configFileWatcher) {
                 this._onAutoConfigChanged(null);
-                this._configFileWatcher = new Filewatcher.ConfigFileWatcher(Lang.bind(this, this._onAutoConfigChanged));
+                let configfile = Filewatcher.probeDirectories();
+                if (configfile !== null) {
+                    this._configFileWatcher = new Filewatcher.ConfigFileWatcher(Lang.bind(this, this._onAutoConfigChanged), configfile);
+                }
             }
         } else {
             if (this._configFileWatcher) {

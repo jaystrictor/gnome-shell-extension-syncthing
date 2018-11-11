@@ -4,9 +4,6 @@ const Lang = imports.lang;
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
 
-const config_filename = GLib.get_user_config_dir() + "/syncthing/config.xml";
-const configfile = Gio.File.new_for_path(config_filename);
-
 function getCurrentDir() {
     let stack = (new Error()).stack;
     let stackLine = stack.split("\n")[1];
@@ -26,10 +23,34 @@ function myLog(msg) {
     log("[syncthingicon] " + msg);
 }
 
+function probeDirectories() {
+    const directories = [
+        GLib.get_user_config_dir() + "/syncthing",
+        GLib.get_home_dir() + "/snap/syncthing/common/syncthing",
+    ];
+    const filename = "config.xml";
+    for (let dir of directories) {
+        let configfile = Gio.File.new_for_path(dir + "/" + filename);
+        let info = null;
+        try {
+            info = configfile.query_info(Gio.FILE_ATTRIBUTE_STANDARD_TYPE, Gio.FileQueryInfoFlags.NONE, null);
+        } catch(e) {
+            // file does not exist
+        }
+        if (info !== null) {
+            myLog("found syncthing config file in " + dir);
+            return configfile;
+        }
+    }
+    myLog("syncthing config file not found in " + directories);
+    return null;
+}
+
 const ConfigParser = new Lang.Class({
     Name: "ConfigParser",
 
-    _init: function() {
+    _init: function(file) {
+        this.file = file;
         this.state = "root";
         this.config = {};
 
@@ -43,7 +64,7 @@ const ConfigParser = new Lang.Class({
     run_sync: function(callback) {
         try {
             let success, data, tag;
-            [success, data, tag] = configfile.load_contents(null);
+            [success, data, tag] = this.file.load_contents(null);
             this._parser.write(data);
         } catch (e) {
             myLog("Failed to read " + config_filename + ": " + e.message);
@@ -120,11 +141,12 @@ var ConfigFileWatcher = new Lang.Class({
     WARMUP_TIME: 1,
     COOLDOWN_TIME: 10,
 
-    _init: function(callback) {
+    _init: function(callback, file) {
         this.callback = callback;
+        this.file = file;
         this.running_state = "ready";
         this.run_scheduled = false;
-        this.monitor = configfile.monitor_file(Gio.FileMonitorFlags.NONE, null);
+        this.monitor = this.file.monitor_file(Gio.FileMonitorFlags.NONE, null);
         this.monitor.connect("changed", Lang.bind(this, this._configfileChanged));
         this._configfileChanged();
     },
@@ -143,7 +165,7 @@ var ConfigFileWatcher = new Lang.Class({
     },
 
     _run: function() {
-        let configParser = new ConfigParser();
+        let configParser = new ConfigParser(this.file);
         configParser.run_sync(Lang.bind(this, this._onRunFinished));
     },
 

@@ -24,7 +24,6 @@ function myLog(msg) {
     log("[syncthingicon-webview] " + msg);
 }
 
-
 function getSettings() {
     let dir = getCurrentDir();
     let schema = "org.gnome.shell.extensions.syncthing";
@@ -133,7 +132,11 @@ const SyncthingViewer = new Lang.Class({
     _onSettingsChanged: function(settings, key) {
         if (Settings.get_boolean("autoconfig")) {
             if (! this._configFileWatcher) {
-                this._configFileWatcher = new Filewatcher.ConfigFileWatcher(Lang.bind(this, this._onAutoConfigChanged));
+                this._onAutoConfigChanged(null);
+                let configfile = Filewatcher.probeDirectories();
+                if (configfile !== null) {
+                    this._configFileWatcher = new Filewatcher.ConfigFileWatcher(Lang.bind(this, this._onAutoConfigChanged), configfile);
+                }
             }
         } else {
             if (this._configFileWatcher) {
@@ -148,9 +151,10 @@ const SyncthingViewer = new Lang.Class({
 
     _onAutoConfigChanged: function(config) {
         let uri;
-        let apikey = null;
+        let apikey;
         if (config === null) {
             uri = Settings.get_default_value("configuration-uri").unpack();
+            apikey = Settings.get_default_value("api-key").unpack();
         } else {
             uri = config["uri"] || Settings.get_default_value("configuration-uri").unpack();
             apikey = config["apikey"];

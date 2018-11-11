@@ -322,14 +322,11 @@ const SyncthingMenu = new Lang.Class({
         if (actor.state) {
             this._systemd.startService();
             this._systemd.setUpdateInterval(1, 8);
-            this._api.setUpdateInterval(1, 64);
         } else {
             this._systemd.stopService();
-            this._systemd.setUpdateInterval(8, 64);
-            this._api.setUpdateInterval(1, 64);
+            this._systemd.setUpdateInterval(1, 64);
         }
         this._systemd.update();
-        this._api.update();
     },
 
     _onSystemdStateChanged: function(control, state) {
@@ -350,7 +347,13 @@ const SyncthingMenu = new Lang.Class({
                     this._switchNotifyId = this.item_switch.connect("activate", Lang.bind(this, this._onSwitch));
                     this.menu.addMenuItem(this.item_switch, 0);
                 }
-                this.item_switch.setToggleState(state === "active");
+                if (state === "active") {
+                    this.item_switch.setToggleState(true);
+                    this._api.restart();
+                } else {
+                    this.item_switch.setToggleState(false);
+                    this._api.stop();
+                }
                 break;
             default:
                 throw "Unknown systemd state: " + state;

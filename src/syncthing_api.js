@@ -145,7 +145,8 @@ var SyncthingSession = new Lang.Class({
         this.folders = new Map();
         this.state = null;
 
-        this._timeoutManager = new TimeoutManager(1, 64, Lang.bind(this, this.update));
+        this._timeoutManager = new TimeoutManager(Lang.bind(this, this.update));
+        this._timeoutManager.changeTimeout(1, 64);
     },
 
     _statusNotOk: function(msg, uri) {
@@ -255,8 +256,14 @@ var SyncthingSession = new Lang.Class({
         let inDiff = total.inBytesTotal - this.lastTotal.inBytesTotal;
         let outDiff = total.outBytesTotal - this.lastTotal.outBytesTotal;
 
-        if (milliseconds <= 0 || inDiff < 0 || outDiff < 0) {
+        if (milliseconds <= 0) {
             myLog("API connections in the future. Will try again later.");
+            this.lastTotal = currentTotal;
+            this._setUpDownState("none");
+            return;
+        }
+        if (inDiff < 0 || outDiff < 0) {
+            myLog("API connections non-monotonic. Will try again later.");
             this.lastTotal = currentTotal;
             this._setUpDownState("none");
             return;
@@ -331,7 +338,19 @@ var SyncthingSession = new Lang.Class({
         }
     },
 
-    setUpdateInterval: function(start, end) {
+    stop: function() {
+        this._setConnectionState("disconnected");
+        this.lastTotal = null;
+        this._setUpDownState("none");
+        this.cancelAllUpdates();
+        this._timeoutManager.cancel();
+        for (let folder of this.folders.values()) {
+            this.emit("folder-removed", folder);
+        }
+        this.folders = new Map();
+    },
+
+    restart: function(start = 1, end = 64) {
         this._timeoutManager.changeTimeout(start, end);
     },
 
@@ -346,13 +365,12 @@ var SyncthingSession = new Lang.Class({
     },
 
     setParams: function(uri, apikey) {
+        this.uri = uri;
+        this.apikey = apikey;
         this._setConnectionState("disconnected");
         this.lastTotal = null;
         this._setUpDownState("none");
-        this.uri = uri;
-        this.apikey = apikey;
         this.cancelAllUpdates();
-        this.setUpdateInterval(1, 64);
     },
 
     destroy: function() {
@@ -371,15 +389,14 @@ const TimeoutManager = new Lang.Class({
     // is exponentially expanded to 2*start, 2*2*start, etc. seconds.
     // When the timeout overflows end seconds,
     // it is set to the final value of end seconds.
-    _init: function(start, end, func) {
-        this._current = start;
-        this.end = end;
+    _init: function(func) {
         this.func = func;
-        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, start, Lang.bind(this, this._callback));
     },
 
     changeTimeout: function(start, end) {
-        GLib.Source.remove(this._source);
+        if (this._source) {
+            GLib.Source.remove(this._source);
+        }
         this._current = start;
         this.end = end;
         this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, start, Lang.bind(this, this._callback));
@@ -401,7 +418,10 @@ const TimeoutManager = new Lang.Class({
     },
 
     cancel: function() {
-        GLib.Source.remove(this._source);
+        if (this._source) {
+            GLib.Source.remove(this._source);
+            this._source = null;
+        }
     },
 });
 

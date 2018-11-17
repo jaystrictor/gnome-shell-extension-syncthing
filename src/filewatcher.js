@@ -65,9 +65,11 @@ const ConfigParser = new Lang.Class({
         try {
             let success, data, tag;
             [success, data, tag] = this.file.load_contents(null);
+            data = imports.byteArray.toString(data);
             this._parser.write(data);
         } catch (e) {
-            myLog("Failed to read " + config_filename + ": " + e.message);
+            myLog("Failed to read config file " + this.file.get_path() + ": " + e.message);
+            callback(null);
         }
         // calculate the correct URI from variables "tls" and "address"
         this.config["uri"] = this._getURI(this.config);
@@ -88,9 +90,7 @@ const ConfigParser = new Lang.Class({
 
 
     _onError: function(error) {
-        myLog("Error parsing " + this.filename + ": " + error);
-        this.config = null;
-        // We should abort the parsing process here.
+        throw(error);
     },
 
     _onText: function(text) {

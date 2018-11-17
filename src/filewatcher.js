@@ -17,7 +17,7 @@ function getCurrentDir() {
     return file.get_parent();
 }
 imports.searchPath.unshift(getCurrentDir().get_path());
-const Sax = imports.sax;
+const Saxes = imports.saxes;
 
 function myLog(msg) {
     log("[syncthingicon] " + msg);
@@ -54,7 +54,7 @@ const ConfigParser = new Lang.Class({
         this.state = "root";
         this.config = {};
 
-        this._parser = Sax.sax.parser(true);
+        this._parser = new Saxes.SaxesParser( {position: true} );
         this._parser.onerror = Lang.bind(this, this._onError);
         this._parser.onopentag = Lang.bind(this, this._onOpenTag);
         this._parser.onclosetag = Lang.bind(this, this._onCloseTag);
@@ -115,14 +115,14 @@ const ConfigParser = new Lang.Class({
         }
     },
 
-    _onCloseTag: function(name) {
-        if (this.state === "gui" && name === "gui") {
+    _onCloseTag: function(tag) {
+        if (this.state === "gui" && tag.name === "gui") {
             this.state = "end";
         }
-        if (this.state === "address" && name === "address") {
+        if (this.state === "address" && tag.name === "address") {
             this.state = "gui";
         }
-        if (this.state === "apikey" && name === "apikey") {
+        if (this.state === "apikey" && tag.name === "apikey") {
             this.state = "gui";
         }
     },

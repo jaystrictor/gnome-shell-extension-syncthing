@@ -324,7 +324,7 @@ const SyncthingMenu = new Lang.Class({
             try {
                 Gio.AppInfo.launch_default_for_uri(this.baseURI, launchContext);
             } catch(e) {
-                Main.notifyError(_("Failed to launch URI \"%s\"").format(uri), e.message);
+                Main.notifyError(_("Failed to launch URI \"%s\"").format(this.baseURI), e.message);
             }
         }
     },

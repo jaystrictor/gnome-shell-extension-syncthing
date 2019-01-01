@@ -27,7 +27,7 @@ const SyncthingApi = Me.imports.syncthing_api;
 const Systemd = Me.imports.systemd;
 
 function myLog(msg) {
-    log("[syncthingicon] " + msg);
+    log(`[syncthingicon] ${msg}`);
 }
 
 const FolderList = new Lang.Class({
@@ -145,7 +145,7 @@ const FolderMenuItem = new Lang.Class({
         try {
             Gio.AppInfo.launch_default_for_uri(uri, launchContext);
         } catch(e) {
-            Main.notifyError(_("Failed to launch URI \"%s\"").format(uri), e.message);
+            Main.notifyError(_("Failed to launch URI “%s”").format(uri), e.message);
         }
 
         this.parent(event);
@@ -177,7 +177,7 @@ const FolderMenuItem = new Lang.Class({
             this._label_state.set_text("");
             this._statusIcon.icon_name = "question";
         } else {
-            myLog("unknown syncthing folder state: " + state);
+            myLog(`unknown syncthing folder state: ${state}`);
             this._label_state.set_text("");
             this._statusIcon.icon_name = "question";
         }
@@ -324,7 +324,7 @@ const SyncthingMenu = new Lang.Class({
             try {
                 Gio.AppInfo.launch_default_for_uri(this.baseURI, launchContext);
             } catch(e) {
-                Main.notifyError(_("Failed to launch URI \"%s\"").format(this.baseURI), e.message);
+                Main.notifyError(_("Failed to launch URI “%s”").format(this.baseURI), e.message);
             }
         }
     },
@@ -350,7 +350,7 @@ const SyncthingMenu = new Lang.Class({
         switch (state) {
             case "systemd-not-available":
             case "unit-not-loaded":
-                myLog("systemd user unit \"syncthing.service\" not loaded");
+                myLog("systemd user unit “syncthing.service” not loaded");
                 if (this.item_switch !== null) {
                     this.item_switch.disconnect(this._switchNotifyId);
                     this.item_switch.destroy();
@@ -374,7 +374,7 @@ const SyncthingMenu = new Lang.Class({
                 }
                 break;
             default:
-                throw "Unknown systemd state: " + state;
+                throw `Unknown systemd state: ${state}`;
         }
         this.systemd_state = state;
         this._updateStatusIcon();
@@ -389,7 +389,7 @@ const SyncthingMenu = new Lang.Class({
                 this.item_config.setSensitive(false);
                 break;
             default:
-                throw "Unknown API connection state: " + state;
+                throw `Unknown API connection state: ${state}`;
         }
         this.api_state = state;
         this._updateStatusIcon();
@@ -420,7 +420,7 @@ const SyncthingMenu = new Lang.Class({
 function init(extension) {
     Convenience.initTranslations(GETTEXT_DOMAIN);
     let icon_theme = imports.gi.Gtk.IconTheme.get_default();
-    icon_theme.append_search_path(extension.path + "/icons");
+    icon_theme.append_search_path(`${extension.path}/icons`);
 }
 
 

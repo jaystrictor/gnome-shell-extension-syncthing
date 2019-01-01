@@ -7,7 +7,7 @@ const Lang = imports.lang;
 const Soup = imports.gi.Soup;
 
 function myLog(msg) {
-    log("[syncthingicon] " + msg);
+    log(`[syncthingicon] ${msg}`);
 }
 
 var Folder = new Lang.Class({
@@ -43,7 +43,7 @@ var Folder = new Lang.Class({
             // We cancelled the message. Do nothing.
             return;
         } else if (msg.status_code !== Soup.Status.OK) {
-            myLog("Failed to obtain folder information for id \"" + this.id + "\".");
+            myLog(`Failed to obtain folder information for id “${this.id}”.`);
             this._setFolderConfig(null);
             this.state = "unknown";
             this.emit("state-changed", this.state);
@@ -67,7 +67,7 @@ var Folder = new Lang.Class({
             case "unknown":
                 break;
             default:
-                myLog("Unknown syncthing folder state: " + state);
+                myLog(`Unknown syncthing folder state: ${state}`);
                 this.state = "unknown";
         }
         if (this.state !== state) {
@@ -102,7 +102,7 @@ var Folder = new Lang.Class({
         if (this._soup_msg)
             soupSession.cancel_message(this._soup_msg, Soup.Status.CANCELLED);
         // This is an expensive call, increasing CPU and RAM usage on the device. Use sparingly.
-        let query_uri = uri + "/rest/db/status?folder=" + this.id;
+        let query_uri = `${uri}/rest/db/status?folder=${this.id}`;
         this._soup_msg = Soup.Message.new("GET", query_uri);
         if (apikey) {
             this._soup_msg.request_headers.append("X-API-Key", apikey);
@@ -150,13 +150,13 @@ var SyncthingSession = new Lang.Class({
     },
 
     _statusNotOk: function(msg, uri) {
-        myLog("Failed to connect to syncthing daemon at URI \"" + uri + "\": " + msg.reason_phrase);
+        myLog(`Failed to connect to syncthing daemon at URI “${uri}”: ${msg.reason_phrase}`);
         if (msg.status_code === Soup.Status.SSL_FAILED) {
             myLog("TLS is currently not supported.");
         } else if (msg.response_body.data === "CSRF Error\n") {
             myLog("CSRF Error. Please verify your API key.");
         } else if (msg.response_body.data !== null) {
-            myLog("Response body: " + msg.response_body.data);
+            myLog(`Response body: ${msg.response_body.data}`);
         }
         this._setConnectionState("disconnected");
     },
@@ -220,7 +220,7 @@ var SyncthingSession = new Lang.Class({
     configRequest: function(uri, apikey) {
         // The current syncthing config is fetched from
         // "http://localhost:8384/rest/system/config" or similar.
-        let config_uri = uri + "/rest/system/config";
+        let config_uri = `${uri}/rest/system/config`;
         let msg = Soup.Message.new("GET", config_uri);
         if (apikey) {
             msg.request_headers.append("X-API-Key", apikey);
@@ -324,7 +324,7 @@ var SyncthingSession = new Lang.Class({
     },
 
     connectionsRequest: function(uri) {
-        let config_uri = uri + "/rest/system/connections";
+        let config_uri = `${uri}/rest/system/connections`;
         let msg = Soup.Message.new("GET", config_uri);
         if (this.apikey) {
             msg.request_headers.append("X-API-Key", this.apikey);

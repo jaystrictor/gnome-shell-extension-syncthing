@@ -21,7 +21,7 @@ imports.searchPath.unshift(getCurrentDir().get_path());
 const Filewatcher = imports.filewatcher;
 
 function myLog(msg) {
-    log("[syncthingicon-webview] " + msg);
+    log(`[syncthingicon-webview] ${msg}`);
 }
 
 function getSettings() {
@@ -34,7 +34,7 @@ function getSettings() {
                                                  false);
     let schemaObj = schemaSource.lookup(schema, true);
     if (!schemaObj)
-        throw new Error("Schema " + schema + " could not be found.");
+        throw new Error(`Schema ${schema} could not be found.`);
     return new Gio.Settings({ settings_schema: schemaObj });
 }
 const Settings = getSettings();
@@ -77,7 +77,7 @@ const SyncthingWindow = new Lang.Class({
             try {
                 Gio.AppInfo.launch_default_for_uri(uri, launchContext);
             } catch(e) {
-                myLog("Failed to launch URI \"%s\": ".format(uri) + e.message);
+                myLog(`Failed to launch URI “${uri}”: ${e.message}`);
             }
             decision.ignore();
             return true;

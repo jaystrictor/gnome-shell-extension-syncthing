@@ -7,7 +7,7 @@ const Lang = imports.lang;
 
 
 function myLog(msg) {
-    log("[syncthingicon] " + msg);
+    log(`[syncthingicon] ${msg}`);
 }
 
 
@@ -57,7 +57,7 @@ var Control = new Lang.Class({
                 return loadState
                 break;
             default:
-                throw "Error parsing systemd LoadState=" + loadState;
+                throw `Error parsing systemd LoadState=${loadState}`;
         }
     },
 
@@ -77,7 +77,7 @@ var Control = new Lang.Class({
                 return activeState
                 break;
             default:
-                throw "Error parsing systemd ActiveState=" + activeState;
+                throw `Error parsing systemd ActiveState=${activeState}`;
         }
 
     },

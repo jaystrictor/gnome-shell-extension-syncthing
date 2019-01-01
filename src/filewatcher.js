@@ -20,17 +20,16 @@ imports.searchPath.unshift(getCurrentDir().get_path());
 const Saxes = imports.saxes;
 
 function myLog(msg) {
-    log("[syncthingicon] " + msg);
+    log(`[syncthingicon] ${msg}`);
 }
 
 function probeDirectories() {
     const directories = [
-        GLib.get_user_config_dir() + "/syncthing",
-        GLib.get_home_dir() + "/snap/syncthing/common/syncthing",
+        `${GLib.get_user_config_dir()}/syncthing`,
+        `${GLib.get_home_dir()}/snap/syncthing/common/syncthing`,
     ];
-    const filename = "config.xml";
     for (let dir of directories) {
-        let configfile = Gio.File.new_for_path(dir + "/" + filename);
+        let configfile = Gio.File.new_for_path(`${dir}/config.xml`);
         let info = null;
         try {
             info = configfile.query_info(Gio.FILE_ATTRIBUTE_STANDARD_TYPE, Gio.FileQueryInfoFlags.NONE, null);
@@ -38,11 +37,11 @@ function probeDirectories() {
             // file does not exist
         }
         if (info !== null) {
-            myLog("found syncthing config file in " + dir);
+            myLog(`found syncthing config file in ${dir}`);
             return configfile;
         }
     }
-    myLog("syncthing config file not found in " + directories);
+    myLog(`syncthing config file not found in ${directories}`);
     return null;
 }
 
@@ -68,7 +67,7 @@ const ConfigParser = new Lang.Class({
             data = imports.byteArray.toString(data);
             this._parser.write(data);
         } catch (e) {
-            myLog("Failed to read config file " + this.file.get_path() + ": " + e.message);
+            myLog(`Failed to read config file ${this.file.get_path()}: ${e.message}`);
             callback(null);
         }
         // calculate the correct URI from variables "tls" and "address"
@@ -81,9 +80,9 @@ const ConfigParser = new Lang.Class({
         let tls = config["tls"];
         if (address) {
             if (tls)
-                return "https://" + address;
+                return `https://${address}`;
             else
-                return "http://" + address;
+                return `http://${address}`;
         }
         return null;
     },

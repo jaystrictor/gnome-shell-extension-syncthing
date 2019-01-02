@@ -22,25 +22,25 @@ var Control = new Lang.Class({
     },
 
 
-    _init: function(end_interval) {
+    _init(end_interval) {
         this.parent();
         this.state = "INIT";
         this._timeoutManager = new TimeoutManager(1, end_interval, Lang.bind(this, this.update));
     },
 
-    startService: function() {
+    startService() {
         let argv = "/bin/systemctl --user start syncthing.service";
         let [ok, pid] = GLib.spawn_async(null, argv.split(" "), null, GLib.SpawnFlags.SEARCH_PATH, null);
         GLib.spawn_close_pid(pid);
     },
 
-    stopService: function() {
+    stopService() {
         let argv = "/bin/systemctl --user stop syncthing.service";
         let [ok, pid] = GLib.spawn_async(null, argv.split(" "), null, GLib.SpawnFlags.SEARCH_PATH, null);
         GLib.spawn_close_pid(pid);
     },
 
-    _parseLoadState: function(data) {
+    _parseLoadState(data) {
         if (data.slice(0, 10) !== "LoadState=") {
             throw "Error parsing systemd LoadState.";
         }
@@ -61,7 +61,7 @@ var Control = new Lang.Class({
         }
     },
 
-    _parseActiveState: function(data) {
+    _parseActiveState(data) {
         if (data.slice(0, 12) !== "ActiveState=") {
             throw "Error parsing systemd ActiveState.";
         }
@@ -82,7 +82,7 @@ var Control = new Lang.Class({
 
     },
 
-    _parseData: function(bytes) {
+    _parseData(bytes) {
         // Here we consolidate the different systemd LoadState and ActiveState states
         // into a single Control-state, which is one of
         // "systemd-not-available", "unit-not-loaded", "active", "inactive"
@@ -105,7 +105,7 @@ var Control = new Lang.Class({
         }
     },
 
-    _onSystemdStateReceived: function(object, result) {
+    _onSystemdStateReceived(object, result) {
         try {
             let bytes = this._stream.read_bytes_finish(result);
             let newState = this._parseData(bytes);
@@ -116,7 +116,7 @@ var Control = new Lang.Class({
         }
     },
 
-    _updateSystemdState: function() {
+    _updateSystemdState() {
         if (this._childSource)
             return;
         let argv = "/bin/systemctl --user show -p LoadState -p ActiveState syncthing.service";
@@ -139,22 +139,22 @@ var Control = new Lang.Class({
         // But on the other hand, the process should not be around for a long time.
     },
 
-    _setState: function(newState) {
+    _setState(newState) {
         if (newState !== this.state) {
             this.state = newState;
             this.emit("state-changed", this.state);
         }
     },
 
-    update: function() {
+    update() {
         this._updateSystemdState();
     },
 
-    setUpdateInterval: function(start, end) {
+    setUpdateInterval(start, end) {
         this._timeoutManager.changeTimeout(start, end);
     },
 
-    destroy: function() {
+    destroy() {
         this._timeoutManager.cancel();
     },
 });
@@ -178,21 +178,21 @@ const TimeoutManager = new Lang.Class({
     // is exponentially expanded to 2*start, 2*2*start, etc. seconds.
     // When the timeout overflows end seconds,
     // it is set to the final value of end seconds.
-    _init: function(start, end, func) {
+    _init(start, end, func) {
         this._current = start;
         this.end = end;
         this.func = func;
         this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, start, Lang.bind(this, this._callback));
     },
 
-    changeTimeout: function(start, end) {
+    changeTimeout(start, end) {
         GLib.Source.remove(this._source);
         this._current = start;
         this.end = end;
         this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, start, Lang.bind(this, this._callback));
     },
 
-    _callback: function() {
+    _callback() {
         this.func();
 
         if (this._current === this.end) {
@@ -207,7 +207,7 @@ const TimeoutManager = new Lang.Class({
         return GLib.SOURCE_REMOVE;
     },
 
-    cancel: function() {
+    cancel() {
         GLib.Source.remove(this._source);
     },
 });

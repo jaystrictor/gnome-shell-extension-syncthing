@@ -43,7 +43,7 @@ const SyncthingWindow = new Lang.Class({
     Name: "SyncthingWindow",
     Extends: Gtk.ApplicationWindow,
 
-    _init: function(application) {
+    _init(application) {
         this.parent({ application: application });
         this.set_icon_from_file("icons/syncthing-logo.svg");
         this.set_default_size(1300,800);
@@ -57,7 +57,7 @@ const SyncthingWindow = new Lang.Class({
         this._webView.show();
     },
 
-    loadURI: function(uri, apikey) {
+    loadURI(uri, apikey) {
         let request = WebKit.URIRequest.new(uri);
         if (apikey) {
             let headers = request.get_http_headers();
@@ -66,11 +66,11 @@ const SyncthingWindow = new Lang.Class({
         this._webView.load_request(request);
     },
 
-    _onContextMenu: function(web_view, context_menu, event, hit_test_result) {
+    _onContextMenu(web_view, context_menu, event, hit_test_result) {
         return true;
     },
 
-    _onDecidePolicy: function(web_view, decision, decision_type) {
+    _onDecidePolicy(web_view, decision, decision_type) {
         if (decision_type == WebKit.PolicyDecisionType.NEW_WINDOW_ACTION) {
             let uri = decision.request.uri;
             let launchContext = this.get_screen().get_display().get_app_launch_context();
@@ -95,20 +95,20 @@ const SyncthingViewer = new Lang.Class({
     Name: "SyncthingViewer",
     Extends: Gtk.Application,
 
-    _init: function() {
+    _init() {
         this.parent({ application_id: "net.syncthing.gtk.webview" });
     },
 
 
-    _onCommandLine: function(application, command_line) {
+    _onCommandLine(application, command_line) {
         return 0;
     },
 
-    vfunc_activate: function() {
+    vfunc_activate() {
         this._window.present();
     },
 
-    vfunc_startup: function() {
+    vfunc_startup() {
         this.parent();
         this._window = new SyncthingWindow(this);
         Settings.connect("changed", Lang.bind(this, this._onSettingsChanged));
@@ -122,14 +122,14 @@ const SyncthingViewer = new Lang.Class({
         this.set_app_menu(menumodel);
     },
 
-    _addSimpleAction: function(name, callback) {
+    _addSimpleAction(name, callback) {
         let action = new Gio.SimpleAction({ name: name });
         action.connect("activate", callback);
         this.add_action(action);
         return action;
     },
 
-    _onSettingsChanged: function(settings, key) {
+    _onSettingsChanged(settings, key) {
         if (Settings.get_boolean("autoconfig")) {
             if (! this._configFileWatcher) {
                 this._onAutoConfigChanged(null);
@@ -149,7 +149,7 @@ const SyncthingViewer = new Lang.Class({
         }
     },
 
-    _onAutoConfigChanged: function(config) {
+    _onAutoConfigChanged(config) {
         let uri;
         let apikey;
         if (config === null) {
@@ -162,7 +162,7 @@ const SyncthingViewer = new Lang.Class({
         this._changeConfig(uri, apikey);
     },
 
-    _changeConfig: function(uri, apikey) {
+    _changeConfig(uri, apikey) {
         if (uri == this.baseURI)
             return;
         this.baseURI = uri;

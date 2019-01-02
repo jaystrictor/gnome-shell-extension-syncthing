@@ -48,7 +48,7 @@ function probeDirectories() {
 const ConfigParser = new Lang.Class({
     Name: "ConfigParser",
 
-    _init: function(file) {
+    _init(file) {
         this.file = file;
         this.state = "root";
         this.config = {};
@@ -60,7 +60,7 @@ const ConfigParser = new Lang.Class({
         this._parser.ontext = Lang.bind(this, this._onText);
     },
 
-    run_sync: function(callback) {
+    run_sync(callback) {
         try {
             let success, data, tag;
             [success, data, tag] = this.file.load_contents(null);
@@ -75,7 +75,7 @@ const ConfigParser = new Lang.Class({
         callback(this.config);
     },
 
-    _getURI: function(config) {
+    _getURI(config) {
         let address = config["address"];
         let tls = config["tls"];
         if (address) {
@@ -88,11 +88,11 @@ const ConfigParser = new Lang.Class({
     },
 
 
-    _onError: function(error) {
+    _onError(error) {
         throw(error);
     },
 
-    _onText: function(text) {
+    _onText(text) {
         if (this.state === "address") {
             this.config["address"] = text;
         }
@@ -101,7 +101,7 @@ const ConfigParser = new Lang.Class({
         }
     },
 
-    _onOpenTag: function(tag) {
+    _onOpenTag(tag) {
         if (this.state === "root" && tag.name === "gui") {
             this.state = "gui";
             this.config["tls"] = (tag.attributes["tls"].toUpperCase() == "TRUE");
@@ -114,7 +114,7 @@ const ConfigParser = new Lang.Class({
         }
     },
 
-    _onCloseTag: function(tag) {
+    _onCloseTag(tag) {
         if (this.state === "gui" && tag.name === "gui") {
             this.state = "end";
         }
@@ -140,7 +140,7 @@ var ConfigFileWatcher = new Lang.Class({
     WARMUP_TIME: 1,
     COOLDOWN_TIME: 10,
 
-    _init: function(callback, file) {
+    _init(callback, file) {
         this.callback = callback;
         this.file = file;
         this.running_state = "ready";
@@ -150,7 +150,7 @@ var ConfigFileWatcher = new Lang.Class({
         this._configfileChanged();
     },
 
-    _configfileChanged: function(monitor, file, other_file, event_type) {
+    _configfileChanged(monitor, file, other_file, event_type) {
         if (this.running_state === "ready") {
             this.running_state = "warmup";
             this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this.WARMUP_TIME, Lang.bind(this, this._nextState));
@@ -163,12 +163,12 @@ var ConfigFileWatcher = new Lang.Class({
         }
     },
 
-    _run: function() {
+    _run() {
         let configParser = new ConfigParser(this.file);
         configParser.run_sync(Lang.bind(this, this._onRunFinished));
     },
 
-    _onRunFinished: function(result) {
+    _onRunFinished(result) {
         this.running_state = "cooldown";
         this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this.COOLDOWN_TIME, Lang.bind(this, this._nextState));
         if (result != this.config) {
@@ -177,7 +177,7 @@ var ConfigFileWatcher = new Lang.Class({
         }
     },
 
-    _nextState: function() {
+    _nextState() {
         this._source = null;
         if (this.running_state === "warmup") {
             this.running_state = "running";
@@ -194,7 +194,7 @@ var ConfigFileWatcher = new Lang.Class({
         return GLib.SOURCE_REMOVE;
     },
 
-    destroy: function() {
+    destroy() {
         if (this._source)
             GLib.Source.remove(this._source);
     },

@@ -26,7 +26,7 @@ var Folder = new Lang.Class({
     },
 
 
-    _init: function(apiSession, folderConfig) {
+    _init(apiSession, folderConfig) {
         this.parent();
         this._soup_msg = null;
         this.state = null;
@@ -37,7 +37,7 @@ var Folder = new Lang.Class({
         this._setFolderConfig(folderConfig);
     },
 
-    _folderReceived: function(session, msg) {
+    _folderReceived(session, msg) {
         this._soup_msg = null;
         if (msg.status_code === Soup.Status.CANCELLED) {
             // We cancelled the message. Do nothing.
@@ -53,7 +53,7 @@ var Folder = new Lang.Class({
         this._parseFolderData(data);
     },
 
-    _parseFolderData: function(data) {
+    _parseFolderData(data) {
         let model = JSON.parse(data);
         //log(JSON.stringify(model, null, 2));
         let state = model.state;
@@ -76,7 +76,7 @@ var Folder = new Lang.Class({
         }
     },
 
-    _setFolderConfig: function(folderConfig) {
+    _setFolderConfig(folderConfig) {
         let label = this.id;
         let path = null;
         if (folderConfig) {
@@ -97,7 +97,7 @@ var Folder = new Lang.Class({
         }
     },
 
-    statusRequest: function(uri, apikey) {
+    statusRequest(uri, apikey) {
         let soupSession = this._apiSession.soupSession;
         if (this._soup_msg)
             soupSession.cancel_message(this._soup_msg, Soup.Status.CANCELLED);
@@ -110,7 +110,7 @@ var Folder = new Lang.Class({
         soupSession.queue_message(this._soup_msg, Lang.bind(this, this._folderReceived));
     },
 
-    cancelUpdate: function() {
+    cancelUpdate() {
         if (this._soup_msg) {
             let soupSession = this._apiSession.soupSession;
             soupSession.cancel_message(this._soup_msg, Soup.Status.CANCELLED);
@@ -137,7 +137,7 @@ var SyncthingSession = new Lang.Class({
         },
     },
 
-    _init: function() {
+    _init() {
         this.parent();
         this.soupSession = new Soup.Session();
         // this.folders is a Map:
@@ -149,7 +149,7 @@ var SyncthingSession = new Lang.Class({
         this._timeoutManager.changeTimeout(1, 64);
     },
 
-    _statusNotOk: function(msg, uri) {
+    _statusNotOk(msg, uri) {
         myLog(`Failed to connect to syncthing daemon at URI “${uri}”: ${msg.reason_phrase}`);
         if (msg.status_code === Soup.Status.SSL_FAILED) {
             myLog("TLS is currently not supported.");
@@ -161,7 +161,7 @@ var SyncthingSession = new Lang.Class({
         this._setConnectionState("disconnected");
     },
 
-    _configReceived: function(session, msg, uri, apikey) {
+    _configReceived(session, msg, uri, apikey) {
         if (msg.status_code !== Soup.Status.OK) {
             this._statusNotOk(msg, uri);
             for (let folder of this.folders.values()) {
@@ -184,7 +184,7 @@ var SyncthingSession = new Lang.Class({
         this.connectionsRequest(uri);
     },
 
-    _parseConfig: function(uri, apikey, data) {
+    _parseConfig(uri, apikey, data) {
         let config = JSON.parse(data);
         if (config === null || ! "version" in config || ! "folders" in config || ! "devices" in config) {
             throw("Connection to syncthing daemon responded with unparseable data.");
@@ -217,7 +217,7 @@ var SyncthingSession = new Lang.Class({
         }
     },
 
-    configRequest: function(uri, apikey) {
+    configRequest(uri, apikey) {
         // The current syncthing config is fetched from
         // "http://localhost:8384/rest/system/config" or similar.
         let config_uri = `${uri}/rest/system/config`;
@@ -228,7 +228,7 @@ var SyncthingSession = new Lang.Class({
         this.soupSession.queue_message(msg, Lang.bind(this, this._configReceived, uri, apikey));
     },
 
-    _parseConnections: function(data) {
+    _parseConnections(data) {
         let conns = JSON.parse(data);
         if (conns === null || ! "connections" in conns || ! "total" in conns) {
             throw("Connection to syncthing daemon responded with unparseable data.");
@@ -295,21 +295,21 @@ var SyncthingSession = new Lang.Class({
         this.lastTotal = currentTotal;
     },
 
-    _setConnectionState: function(newState) {
+    _setConnectionState(newState) {
         if (newState !== this.connectionState) {
             this.connectionState = newState;
             this.emit("connection-state-changed", newState);
         }
     },
 
-    _setUpDownState: function(newState) {
+    _setUpDownState(newState) {
         if (newState !== this.upDownState) {
             this.upDownState = newState;
             this.emit("updown-state-changed", newState);
         }
     },
 
-    _connectionsReceived: function(session, msg, uri) {
+    _connectionsReceived(session, msg, uri) {
         if (msg.status_code !== Soup.Status.OK) {
             this._statusNotOk(msg, uri);
             // Do nothing.
@@ -323,7 +323,7 @@ var SyncthingSession = new Lang.Class({
         }
     },
 
-    connectionsRequest: function(uri) {
+    connectionsRequest(uri) {
         let config_uri = `${uri}/rest/system/connections`;
         let msg = Soup.Message.new("GET", config_uri);
         if (this.apikey) {
@@ -332,13 +332,13 @@ var SyncthingSession = new Lang.Class({
         this.soupSession.queue_message(msg, Lang.bind(this, this._connectionsReceived, uri));
     },
 
-    update: function() {
+    update() {
         if (this.uri) {
             this.configRequest(this.uri, this.apikey);
         }
     },
 
-    stop: function() {
+    stop() {
         this._setConnectionState("disconnected");
         this.lastTotal = null;
         this._setUpDownState("none");
@@ -350,15 +350,15 @@ var SyncthingSession = new Lang.Class({
         this.folders = new Map();
     },
 
-    setUpdateInterval: function(start, end) {
+    setUpdateInterval(start, end) {
         this._timeoutManager.changeTimeout(start, end);
     },
 
-    start: function() {
+    start() {
         this._timeoutManager.start();
     },
 
-    cancelAllUpdates: function() {
+    cancelAllUpdates() {
         if (this._connections_soup_msg)
             this.soupSession.cancel_message(this._connections_soup_msg, Soup.Status.CANCELLED);
         if (this._config_soup_msg)
@@ -368,7 +368,7 @@ var SyncthingSession = new Lang.Class({
         }
     },
 
-    setParams: function(uri, apikey) {
+    setParams(uri, apikey) {
         this.uri = uri;
         this.apikey = apikey;
         this._setConnectionState("disconnected");
@@ -377,7 +377,7 @@ var SyncthingSession = new Lang.Class({
         this.cancelAllUpdates();
     },
 
-    destroy: function() {
+    destroy() {
         this.cancelAllUpdates();
         this._timeoutManager.stop();
     },
@@ -393,13 +393,13 @@ const TimeoutManager = new Lang.Class({
     // is exponentially expanded to 2*minimum, 2*2*minimum, etc. seconds.
     // When the timeout overflows maximum seconds,
     // it is set to the final value of maximum seconds.
-    _init: function(func, minimum=1, maximum=1) {
+    _init(func, minimum=1, maximum=1) {
         this.func = func;
         this.minimum = minimum;
         this.maximum = maximum;
     },
 
-    changeTimeout: function(minimum, maximum) {
+    changeTimeout(minimum, maximum) {
         this.minimum = minimum;
         this.maximum = maximum;
 
@@ -410,7 +410,7 @@ const TimeoutManager = new Lang.Class({
         }
     },
 
-    _callback: function() {
+    _callback() {
         this.func();
 
         if (this._current === this.maximum) {
@@ -425,14 +425,14 @@ const TimeoutManager = new Lang.Class({
         return GLib.SOURCE_REMOVE;
     },
 
-    start: function() {
+    start() {
         if (! this._source) {
             this._current = this.minimum;
             this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this._current, Lang.bind(this, this._callback));
         }
     },
 
-    stop: function() {
+    stop() {
         if (this._source) {
             GLib.Source.remove(this._source);
             this._source = null;

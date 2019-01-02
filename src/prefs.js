@@ -18,7 +18,7 @@ const SyncthingIconPrefsWidget = new GObject.Class({
     GTypeName: "SyncthingIconPrefsWidget",
     Extends: Gtk.Grid,
 
-    _init: function(params) {
+    _init(params) {
         this.parent(params);
         this._settings = Convenience.getSettings();
 
@@ -87,7 +87,7 @@ const SyncthingIconPrefsWidget = new GObject.Class({
         this._onSwitch(autoSwitch);
     },
 
-    _onSwitch: function(obj, pspec) {
+    _onSwitch(obj, pspec) {
         // set all widgets in rows 1 and 2 to sensitive/insensitive
         for (let row = 1; row <= 2; row++) {
             for (let col = 0; col < 3; col++) {
@@ -98,7 +98,7 @@ const SyncthingIconPrefsWidget = new GObject.Class({
         }
     },
 
-    _onReset: function(button) {
+    _onReset(button) {
         this._settings.reset("configuration-uri");
     },
 });

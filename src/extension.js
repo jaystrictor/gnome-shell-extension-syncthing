@@ -34,7 +34,7 @@ const FolderList = new Lang.Class({
     Name: "FolderList",
     Extends: PopupMenu.PopupMenuSection,
 
-    _init: function(api) {
+    _init(api) {
         this.parent();
         this._api = api;
         this.folder_ids = [];
@@ -44,7 +44,7 @@ const FolderList = new Lang.Class({
         this._folderRemovedNotifyId = this._api.connect("folder-removed", Lang.bind(this, this._removeFolder));
     },
 
-    _addFolder: function(session, folder) {
+    _addFolder(session, folder) {
         let id = folder.id;
         let position = this._sortedIndex(id);
         this.folder_ids.splice(position, 0, id);
@@ -53,7 +53,7 @@ const FolderList = new Lang.Class({
         this.folders.set(id, menuitem);
     },
 
-    _removeFolder: function(session, folder) {
+    _removeFolder(session, folder) {
         let id = folder.id;
         let position = this.folder_ids.indexOf(id);
         let removed = this.folder_ids.splice(position, 1);
@@ -63,7 +63,7 @@ const FolderList = new Lang.Class({
     },
 
     /* http://stackoverflow.com/a/21822316/3472468 */
-    _sortedIndex: function (value) {
+    _sortedIndex(value) {
         let low = 0,
             high = this.folder_ids.length;
 
@@ -75,7 +75,7 @@ const FolderList = new Lang.Class({
         return low;
     },
 
-    destroy: function() {
+    destroy() {
         if (this._folderAddedNotifyId > 0) {
             this._api.disconnect(this._folderAddedNotifyId);
         }
@@ -91,7 +91,7 @@ const FolderMenuItem = new Lang.Class({
     Name: "FolderMenuItem",
     Extends: PopupMenu.PopupBaseMenuItem,
 
-    _init: function (folder) {
+    _init(folder) {
         this.parent();
         this.folder = folder;
         this._icon = new St.Icon({ gicon: this._getIcon(folder.path),
@@ -115,7 +115,7 @@ const FolderMenuItem = new Lang.Class({
         this._folderPathChangedNotifyId = this.folder.connect("path-changed", Lang.bind(this, this._folderPathChanged));
     },
 
-    _getIcon: function(path) {
+    _getIcon(path) {
         if (! path) {
             return new Gio.ThemedIcon({ name: "folder-symbolic" });
         }
@@ -136,7 +136,7 @@ const FolderMenuItem = new Lang.Class({
         }
     },
 
-    activate: function(event) {
+    activate(event) {
         let path = this.folder.path;
         if (! path)
             return;
@@ -151,15 +151,15 @@ const FolderMenuItem = new Lang.Class({
         this.parent(event);
     },
 
-    _folderPathChanged: function(folder, path) {
+    _folderPathChanged(folder, path) {
         this._icon.gicon = this._getIcon(path);
     },
 
-    _folderLabelChanged: function(folder, label) {
+    _folderLabelChanged(folder, label) {
         this._label.text = label;
     },
 
-    _folderStateChanged: function(folder, state) {
+    _folderStateChanged(folder, state) {
         if (state === "idle") {
             this._label_state.set_text("");
             this._statusIcon.icon_name = "";
@@ -183,13 +183,13 @@ const FolderMenuItem = new Lang.Class({
         }
     },
 
-    _syncPercentage: function(model) {
+    _syncPercentage(model) {
         if (model.globalBytes === 0)
             return 100;
         return Math.floor(100 * model.inSyncBytes / model.globalBytes);
     },
 
-    destroy: function() {
+    destroy() {
         if (this._folderStateChangedNotifyId > 0) {
             this.folder.disconnect(this._folderStateChangedNotifyId);
         }
@@ -209,7 +209,7 @@ const SyncthingMenu = new Lang.Class({
     Name: "SyncthingMenu",
     Extends: PanelMenu.Button,
 
-    _init: function() {
+    _init() {
         this.parent(0.0, "Syncthing", false);
 
         this._api = new SyncthingApi.SyncthingSession();
@@ -231,7 +231,7 @@ const SyncthingMenu = new Lang.Class({
         this._onSettingsChanged();
     },
 
-    _initButton: function() {
+    _initButton() {
         let box = new St.BoxLayout();
         this.actor.add_child(box);
 
@@ -247,7 +247,7 @@ const SyncthingMenu = new Lang.Class({
         box.add_child(this.status_label);
     },
 
-    _initMenu: function() {
+    _initMenu() {
         // 1. Syncthing On/Off Switch
         this.item_switch = null;
 
@@ -269,7 +269,7 @@ const SyncthingMenu = new Lang.Class({
         this.menu.addMenuItem(this.folder_list);
     },
 
-    _menuOpenStateChanged: function(menu, open) {
+    _menuOpenStateChanged(menu, open) {
         if (open) {
             // When the menu is open, we want to get quick updates.
             this._systemd.setUpdateInterval(1, 8);
@@ -281,7 +281,7 @@ const SyncthingMenu = new Lang.Class({
         }
     },
 
-    _onSettingsChanged: function(settings, key) {
+    _onSettingsChanged(settings, key) {
         this.externalBrowser = Settings.get_boolean("external-browser");
 
         if (Settings.get_boolean("autoconfig")) {
@@ -304,7 +304,7 @@ const SyncthingMenu = new Lang.Class({
         this._api.setParams(this.baseURI, this.apikey);
     },
 
-    _onAutoConfigChanged: function(config) {
+    _onAutoConfigChanged(config) {
         if (config === null) {
             this.baseURI = Settings.get_default_value("configuration-uri").unpack();
             this.apikey = Settings.get_default_value("api-key").unpack();
@@ -316,7 +316,7 @@ const SyncthingMenu = new Lang.Class({
         this._api.setParams(this.baseURI, this.apikey);
     },
 
-    _onConfig: function(actor, event) {
+    _onConfig(actor, event) {
         if (!this.externalBrowser && this.baseURI.startsWith("http://")) {
             this._openWebView();
         } else {
@@ -329,13 +329,13 @@ const SyncthingMenu = new Lang.Class({
         }
     },
 
-    _openWebView: function() {
+    _openWebView() {
         let working_dir = Me.dir.get_path();
         let [ok, pid] = GLib.spawn_async(working_dir, ["gjs", "webviewer.js"], null, GLib.SpawnFlags.SEARCH_PATH, null);
         GLib.spawn_close_pid(pid);
     },
 
-    _onSwitch: function(actor, event) {
+    _onSwitch(actor, event) {
         if (actor.state) {
             this._systemd.startService();
             this._systemd.setUpdateInterval(1, 8);
@@ -346,7 +346,7 @@ const SyncthingMenu = new Lang.Class({
         this._systemd.update();
     },
 
-    _onSystemdStateChanged: function(control, state) {
+    _onSystemdStateChanged(control, state) {
         switch (state) {
             case "systemd-not-available":
             case "unit-not-loaded":
@@ -380,7 +380,7 @@ const SyncthingMenu = new Lang.Class({
         this._updateStatusIcon();
     },
 
-    _onApiStateChanged: function(session, state) {
+    _onApiStateChanged(session, state) {
         switch (state) {
             case "connected":
                 this.item_config.setSensitive(true);
@@ -395,7 +395,7 @@ const SyncthingMenu = new Lang.Class({
         this._updateStatusIcon();
     },
 
-    _updateStatusIcon: function() {
+    _updateStatusIcon() {
         if (this.api_state === "connected") {
             this._statusIcon.icon_name = "";
         } else if (this.systemd_state !== "inactive") {
@@ -405,7 +405,7 @@ const SyncthingMenu = new Lang.Class({
         }
     },
 
-    destroy: function() {
+    destroy() {
         if (this._api)
             this._api.destroy();
         if (this._systemd)

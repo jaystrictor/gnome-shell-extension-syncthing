@@ -64,7 +64,9 @@ const ConfigParser = new Lang.Class({
         try {
             let success, data, tag;
             [success, data, tag] = this.file.load_contents(null);
-            data = imports.byteArray.toString(data);
+            if (data instanceof Uint8Array) {
+                data = imports.byteArray.toString(data);
+            }
             this._parser.write(data);
         } catch (e) {
             myLog(`Failed to read config file ${this.file.get_path()}: ${e.message}`);

@@ -40,8 +40,8 @@ const FolderList = new Lang.Class({
         this.folder_ids = [];
         // this.folders is a Map() that maps: (id: String) -> menuitem: FolderMenuItem
         this.folders = new Map();
-        this._folderAddedNotifyId = this._api.connect("folder-added", Lang.bind(this, this._addFolder));
-        this._folderRemovedNotifyId = this._api.connect("folder-removed", Lang.bind(this, this._removeFolder));
+        this._folderAddedNotifyId = this._api.connect("folder-added", this._addFolder.bind(this));
+        this._folderRemovedNotifyId = this._api.connect("folder-removed", this._removeFolder.bind(this));
     },
 
     _addFolder(session, folder) {
@@ -110,9 +110,9 @@ const FolderMenuItem = new Lang.Class({
         this._statusIcon = new St.Icon({ style_class: "folder-status-icon" });
         this.actor.add_child(this._statusIcon);
 
-        this._folderStateChangedNotifyId = this.folder.connect("state-changed", Lang.bind(this, this._folderStateChanged));
-        this._folderLabelChangedNotifyId = this.folder.connect("label-changed", Lang.bind(this, this._folderLabelChanged));
-        this._folderPathChangedNotifyId = this.folder.connect("path-changed", Lang.bind(this, this._folderPathChanged));
+        this._folderStateChangedNotifyId = this.folder.connect("state-changed", this._folderStateChanged.bind(this));
+        this._folderLabelChangedNotifyId = this.folder.connect("label-changed", this._folderLabelChanged.bind(this));
+        this._folderPathChangedNotifyId = this.folder.connect("path-changed", this._folderPathChanged.bind(this));
     },
 
     _getIcon(path) {
@@ -219,15 +219,15 @@ const SyncthingMenu = new Lang.Class({
         this._initMenu();
 
         this.api_state = "disconnected";
-        this._api.connect("connection-state-changed", Lang.bind(this, this._onApiStateChanged));
+        this._api.connect("connection-state-changed", this._onApiStateChanged.bind(this));
 
         this.systemd_state = "systemd-not-available";
-        this._systemd.connect("state-changed", Lang.bind(this, this._onSystemdStateChanged));
+        this._systemd.connect("state-changed", this._onSystemdStateChanged.bind(this));
         this._systemd.update();
 
-        this.menu.connect("open-state-changed", Lang.bind(this, this._menuOpenStateChanged));
+        this.menu.connect("open-state-changed", this._menuOpenStateChanged.bind(this));
 
-        Settings.connect("changed", Lang.bind(this, this._onSettingsChanged));
+        Settings.connect("changed", this._onSettingsChanged.bind(this));
         this._onSettingsChanged();
     },
 
@@ -257,7 +257,7 @@ const SyncthingMenu = new Lang.Class({
             : new Gio.ThemedIcon({ name: "emblem-system-symbolic" });
 
         this.item_config = new PopupMenu.PopupImageMenuItem(_("Web Interface"), icon);
-        this.item_config.connect("activate", Lang.bind(this, this._onConfig));
+        this.item_config.connect("activate", this._onConfig.bind(this));
         this.menu.addMenuItem(this.item_config);
         this.item_config.setSensitive(false);
 
@@ -289,7 +289,7 @@ const SyncthingMenu = new Lang.Class({
                 this._onAutoConfigChanged(null);
                 let configfile = Filewatcher.probeDirectories();
                 if (configfile !== null) {
-                    this._configFileWatcher = new Filewatcher.ConfigFileWatcher(Lang.bind(this, this._onAutoConfigChanged), configfile);
+                    this._configFileWatcher = new Filewatcher.ConfigFileWatcher(this._onAutoConfigChanged.bind(this), configfile);
                 }
             }
         } else {
@@ -362,7 +362,7 @@ const SyncthingMenu = new Lang.Class({
             case "active":
                 if (this.item_switch === null) {
                     this.item_switch = new PopupMenu.PopupSwitchMenuItem("Syncthing", false, null);
-                    this._switchNotifyId = this.item_switch.connect("activate", Lang.bind(this, this._onSwitch));
+                    this._switchNotifyId = this.item_switch.connect("activate", this._onSwitch.bind(this));
                     this.menu.addMenuItem(this.item_switch, 0);
                 }
                 if (state === "active") {

@@ -53,11 +53,11 @@ const ConfigParser = new Lang.Class({
         this.state = "root";
         this.config = {};
 
-        this._parser = new Saxes.SaxesParser( {position: true} );
-        this._parser.onerror = Lang.bind(this, this._onError);
-        this._parser.onopentag = Lang.bind(this, this._onOpenTag);
-        this._parser.onclosetag = Lang.bind(this, this._onCloseTag);
-        this._parser.ontext = Lang.bind(this, this._onText);
+        this._parser = new Saxes.SaxesParser( {position: true, fileName: file.get_basename()} );
+        this._parser.onerror = this._onError.bind(this);
+        this._parser.onopentag = this._onOpenTag.bind(this);
+        this._parser.onclosetag = this._onCloseTag.bind(this);
+        this._parser.ontext = this._onText.bind(this);
     },
 
     run_sync(callback) {
@@ -146,14 +146,14 @@ var ConfigFileWatcher = new Lang.Class({
         this.running_state = "ready";
         this.run_scheduled = false;
         this.monitor = this.file.monitor_file(Gio.FileMonitorFlags.NONE, null);
-        this.monitor.connect("changed", Lang.bind(this, this._configfileChanged));
+        this.monitor.connect("changed", this._configfileChanged.bind(this));
         this._configfileChanged();
     },
 
     _configfileChanged(monitor, file, other_file, event_type) {
         if (this.running_state === "ready") {
             this.running_state = "warmup";
-            this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this.WARMUP_TIME, Lang.bind(this, this._nextState));
+            this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this.WARMUP_TIME, this._nextState.bind(this));
         } else if (this.running_state === "warmup") {
             // Nothing to do here.
         } else if (this.running_state === "running") {
@@ -165,12 +165,12 @@ var ConfigFileWatcher = new Lang.Class({
 
     _run() {
         let configParser = new ConfigParser(this.file);
-        configParser.run_sync(Lang.bind(this, this._onRunFinished));
+        configParser.run_sync(this._onRunFinished.bind(this));
     },
 
     _onRunFinished(result) {
         this.running_state = "cooldown";
-        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this.COOLDOWN_TIME, Lang.bind(this, this._nextState));
+        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this.COOLDOWN_TIME, this._nextState.bind(this));
         if (result != this.config) {
             this.config = result;
             this.callback(this.config);
@@ -188,7 +188,7 @@ var ConfigFileWatcher = new Lang.Class({
             this.running_state = "ready";
             if (this.run_scheduled) {
                 this.running_state = "warmup";
-                this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, WARMUP_TIME, Lang.bind(this, this._nextState));
+                this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, WARMUP_TIME, this._nextState.bind(this));
             }
         }
         return GLib.SOURCE_REMOVE;

@@ -39,16 +39,18 @@ correct place for you.
 ./install.sh
 ```
 
-After that, all you have to do is enable Syncthing Icon in your list of shell
-extensions. Gnome Shell comes with a simple GUI application that lists all the
-extensions that you have currently installed, but for some reason it does not
-normally show up when you search the application menu. You have to launch it
-from the terminal, or from the Run Commands dialog (`Alt-F2`). Enter this:
+After that, you have to enable the extension, or, if it was already enabled,
+you have to reload the extension.
 ```sh
-gnome-shell-extension-prefs &
+gnome-shell-extension-tool -e syncthingicon@jay.strict@posteo.de
+gnome-shell-extension-tool -r syncthingicon@jay.strict@posteo.de
 ```
 
-Alternatively, you can use Gnome Tweak Tool to configure the extension.
+Alternatively, you can disable and re-enable the extension using Gnome Tweak
+Tool, or via the extension preferences GUI:
+```sh
+gnome-shell-extension-prefs
+```
 
 ## Debugging
 

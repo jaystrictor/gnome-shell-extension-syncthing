@@ -33,21 +33,21 @@ If you have any trouble with this, see the Gnome Shell Extensions site's
 
 ### installing manually
 
-The install script will make sure all the necessary files are copied to the
+1. The install script will make sure all the necessary files are copied to the
 correct place for you.
 ```sh
 ./install.sh
 ```
 
-After that, you have to enable the extension, or, if it was already enabled,
-you have to reload the extension.
+2. After that, you have to reload gnome-shell, either by logging out and in again,
+or by typing `Alt+F2` `r` `Return`.
+
+3. Then you can enable the extension by typing
 ```sh
 gnome-shell-extension-tool -e syncthingicon@jay.strict@posteo.de
-gnome-shell-extension-tool -r syncthingicon@jay.strict@posteo.de
 ```
-
-Alternatively, you can disable and re-enable the extension using Gnome Tweak
-Tool, or via the extension preferences GUI:
+or, alternatively, you can enable the extension using Gnome Tweak Tool or
+the extension preferences GUI:
 ```sh
 gnome-shell-extension-prefs
 ```

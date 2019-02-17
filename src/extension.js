@@ -235,7 +235,7 @@ const SyncthingMenu = new Lang.Class({
         let box = new St.BoxLayout();
         this.actor.add_child(box);
 
-        this._syncthingIcon = new St.Icon({ icon_name: "syncthing-logo-symbolic",
+        this._syncthingIcon = new St.Icon({ icon_name: "syncthing-symbolic",
                                           style_class: "system-status-icon syncthing-logo-icon" });
         box.add_child(this._syncthingIcon);
 
@@ -419,8 +419,8 @@ const SyncthingMenu = new Lang.Class({
 
 function init(extension) {
     Convenience.initTranslations(GETTEXT_DOMAIN);
-    let icon_theme = imports.gi.Gtk.IconTheme.get_default();
-    icon_theme.append_search_path(`${extension.path}/icons`);
+    let icon_theme = Gtk.IconTheme.get_default();
+    icon_theme.prepend_search_path(`${extension.path}/icons`);
 }
 
 

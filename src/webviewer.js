@@ -44,8 +44,7 @@ const SyncthingWindow = new Lang.Class({
     Extends: Gtk.ApplicationWindow,
 
     _init(application) {
-        this.parent({ application: application });
-        this.set_icon_from_file("icons/syncthing-logo.svg");
+        this.parent({ application: application, icon_name: "syncthing" });
         this.set_default_size(1300,800);
         this.set_wmclass ("Syncthing", "Syncthing");
         this.title = "Syncthing";
@@ -110,6 +109,8 @@ const SyncthingViewer = new Lang.Class({
 
     vfunc_startup() {
         this.parent();
+        let icon_theme = Gtk.IconTheme.get_default();
+        icon_theme.prepend_search_path(`icons`);
         this._window = new SyncthingWindow(this);
         Settings.connect("changed", Lang.bind(this, this._onSettingsChanged));
         this._onSettingsChanged();

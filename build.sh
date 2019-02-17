@@ -4,4 +4,4 @@ glib-compile-schemas schemas/
 
 rm syncthingicon.zip
 zip -j syncthingicon.zip src/*
-zip syncthingicon.zip icons/* schemas/*
+zip -r syncthingicon.zip icons/* schemas/*

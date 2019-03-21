@@ -45,10 +45,8 @@ function probeDirectories() {
     return null;
 }
 
-const ConfigParser = new Lang.Class({
-    Name: "ConfigParser",
-
-    _init(file) {
+const ConfigParser = class {
+    constructor(file) {
         this.file = file;
         this.state = "root";
         this.config = {};
@@ -58,7 +56,7 @@ const ConfigParser = new Lang.Class({
         this._parser.onopentag = this._onOpenTag.bind(this);
         this._parser.onclosetag = this._onCloseTag.bind(this);
         this._parser.ontext = this._onText.bind(this);
-    },
+    }
 
     run_sync(callback) {
         try {
@@ -75,7 +73,7 @@ const ConfigParser = new Lang.Class({
         // calculate the correct URI from variables "tls" and "address"
         this.config["uri"] = this._getURI(this.config);
         callback(this.config);
-    },
+    }
 
     _getURI(config) {
         let address = config["address"];
@@ -87,12 +85,12 @@ const ConfigParser = new Lang.Class({
                 return `http://${address}`;
         }
         return null;
-    },
+    }
 
 
     _onError(error) {
         throw(error);
-    },
+    }
 
     _onText(text) {
         if (this.state === "address") {
@@ -101,7 +99,7 @@ const ConfigParser = new Lang.Class({
         if (this.state === "apikey") {
             this.config["apikey"] = text;
         }
-    },
+    }
 
     _onOpenTag(tag) {
         if (this.state === "root" && tag.name === "gui") {
@@ -114,7 +112,7 @@ const ConfigParser = new Lang.Class({
             else if (tag.name === "apikey")
                 this.state = "apikey";
         }
-    },
+    }
 
     _onCloseTag(tag) {
         if (this.state === "gui" && tag.name === "gui") {
@@ -126,23 +124,21 @@ const ConfigParser = new Lang.Class({
         if (this.state === "apikey" && tag.name === "apikey") {
             this.state = "gui";
         }
-    },
-});
+    }
+}
 
+// Stop warmup after 1 second, cooldown after 10 seconds.
+const WARMUP_TIME = 1;
+const COOLDOWN_TIME = 10;
 
-var ConfigFileWatcher = new Lang.Class({
-    Name: "ConfigFileWatcher",
-
+var ConfigFileWatcher = class {
     /* File Watcher with 4 internal states:
        ready -> warmup -> running -> cooldown
          ^                              |
          --------------------------------
     */
-    // Stop warmup after 1 second, cooldown after 10 seconds.
-    WARMUP_TIME: 1,
-    COOLDOWN_TIME: 10,
 
-    _init(callback, file) {
+    constructor(callback, file) {
         this.callback = callback;
         this.file = file;
         this.running_state = "ready";
@@ -150,12 +146,12 @@ var ConfigFileWatcher = new Lang.Class({
         this.monitor = this.file.monitor_file(Gio.FileMonitorFlags.NONE, null);
         this.monitor.connect("changed", this._configfileChanged.bind(this));
         this._configfileChanged();
-    },
+    }
 
     _configfileChanged(monitor, file, other_file, event_type) {
         if (this.running_state === "ready") {
             this.running_state = "warmup";
-            this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this.WARMUP_TIME, this._nextState.bind(this));
+            this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, WARMUP_TIME, this._nextState.bind(this));
         } else if (this.running_state === "warmup") {
             // Nothing to do here.
         } else if (this.running_state === "running") {
@@ -163,21 +159,21 @@ var ConfigFileWatcher = new Lang.Class({
         } else if (this.running_state === "cooldown") {
             this.run_scheduled = true;
         }
-    },
+    }
 
     _run() {
         let configParser = new ConfigParser(this.file);
         configParser.run_sync(this._onRunFinished.bind(this));
-    },
+    }
 
     _onRunFinished(result) {
         this.running_state = "cooldown";
-        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this.COOLDOWN_TIME, this._nextState.bind(this));
+        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, COOLDOWN_TIME, this._nextState.bind(this));
         if (result != this.config) {
             this.config = result;
             this.callback(this.config);
         }
-    },
+    }
 
     _nextState() {
         this._source = null;
@@ -194,10 +190,10 @@ var ConfigFileWatcher = new Lang.Class({
             }
         }
         return GLib.SOURCE_REMOVE;
-    },
+    }
 
     destroy() {
         if (this._source)
             GLib.Source.remove(this._source);
-    },
-});
+    }
+}

@@ -10,9 +10,7 @@ function myLog(msg) {
     log(`[syncthingicon] ${msg}`);
 }
 
-var Folder = new Lang.Class({
-    Name: "Folder",
-    Extends: GObject.Object,
+var Folder = GObject.registerClass({
     Signals: {
         "state-changed": {
             param_types: [ GObject.TYPE_STRING ],
@@ -24,10 +22,9 @@ var Folder = new Lang.Class({
             param_types: [ GObject.TYPE_STRING ],
         },
     },
-
-
+}, class Folder extends GObject.Object {
     _init(apiSession, folderConfig) {
-        this.parent();
+        super._init();
         this._soup_msg = null;
         this.state = null;
         this.label = null;
@@ -35,7 +32,7 @@ var Folder = new Lang.Class({
         this._apiSession = apiSession;
         this.id = folderConfig.id;
         this._setFolderConfig(folderConfig);
-    },
+    }
 
     _folderReceived(session, msg) {
         this._soup_msg = null;
@@ -51,7 +48,7 @@ var Folder = new Lang.Class({
         }
         let data = msg.response_body.data;
         this._parseFolderData(data);
-    },
+    }
 
     _parseFolderData(data) {
         let model = JSON.parse(data);
@@ -74,7 +71,7 @@ var Folder = new Lang.Class({
             this.state = state;
             this.emit("state-changed", this.state);
         }
-    },
+    }
 
     _setFolderConfig(folderConfig) {
         let label = this.id;
@@ -95,7 +92,7 @@ var Folder = new Lang.Class({
             this.path = path;
             this.emit("path-changed", this.path);
         }
-    },
+    }
 
     statusRequest(uri, apikey) {
         let soupSession = this._apiSession.soupSession;
@@ -108,20 +105,18 @@ var Folder = new Lang.Class({
             this._soup_msg.request_headers.append("X-API-Key", apikey);
         }
         soupSession.queue_message(this._soup_msg, Lang.bind(this, this._folderReceived));
-    },
+    }
 
     cancelUpdate() {
         if (this._soup_msg) {
             let soupSession = this._apiSession.soupSession;
             soupSession.cancel_message(this._soup_msg, Soup.Status.CANCELLED);
         }
-    },
+    }
 });
 
 
-var SyncthingSession = new Lang.Class({
-    Name: "SyncthingSession",
-    Extends: GObject.Object,
+var SyncthingSession = GObject.registerClass({
     Signals: {
         "connection-state-changed": {
             param_types: [ GObject.TYPE_STRING ],
@@ -136,9 +131,9 @@ var SyncthingSession = new Lang.Class({
             param_types: [ GObject.TYPE_OBJECT ],
         },
     },
-
+}, class SyncthingSession extends GObject.Object {
     _init() {
-        this.parent();
+        super._init();
         this.soupSession = new Soup.Session();
         // this.folders is a Map:
         // id -> folder
@@ -147,7 +142,7 @@ var SyncthingSession = new Lang.Class({
 
         this._timeoutManager = new TimeoutManager(Lang.bind(this, this.update));
         this._timeoutManager.changeTimeout(1, 64);
-    },
+    }
 
     _statusNotOk(msg, uri) {
         myLog(`Failed to connect to syncthing daemon at URI “${uri}”: ${msg.reason_phrase}`);
@@ -159,7 +154,7 @@ var SyncthingSession = new Lang.Class({
             myLog(`Response body: ${msg.response_body.data}`);
         }
         this._setConnectionState("disconnected");
-    },
+    }
 
     _configReceived(session, msg, uri, apikey) {
         if (msg.status_code !== Soup.Status.OK) {
@@ -182,7 +177,7 @@ var SyncthingSession = new Lang.Class({
             return;
         }
         this.connectionsRequest(uri);
-    },
+    }
 
     _parseConfig(uri, apikey, data) {
         let config = JSON.parse(data);
@@ -215,7 +210,7 @@ var SyncthingSession = new Lang.Class({
             this.folders.delete(id);
             this.emit("folder-removed", folder);
         }
-    },
+    }
 
     configRequest(uri, apikey) {
         // The current syncthing config is fetched from
@@ -226,7 +221,7 @@ var SyncthingSession = new Lang.Class({
             msg.request_headers.append("X-API-Key", apikey);
         }
         this.soupSession.queue_message(msg, Lang.bind(this, this._configReceived, uri, apikey));
-    },
+    }
 
     _parseConnections(data) {
         let conns = JSON.parse(data);
@@ -293,21 +288,21 @@ var SyncthingSession = new Lang.Class({
             }
         }
         this.lastTotal = currentTotal;
-    },
+    }
 
     _setConnectionState(newState) {
         if (newState !== this.connectionState) {
             this.connectionState = newState;
             this.emit("connection-state-changed", newState);
         }
-    },
+    }
 
     _setUpDownState(newState) {
         if (newState !== this.upDownState) {
             this.upDownState = newState;
             this.emit("updown-state-changed", newState);
         }
-    },
+    }
 
     _connectionsReceived(session, msg, uri) {
         if (msg.status_code !== Soup.Status.OK) {
@@ -321,7 +316,7 @@ var SyncthingSession = new Lang.Class({
         } catch(e) {
             myLog(e);
         }
-    },
+    }
 
     connectionsRequest(uri) {
         let config_uri = `${uri}/rest/system/connections`;
@@ -330,13 +325,13 @@ var SyncthingSession = new Lang.Class({
             msg.request_headers.append("X-API-Key", this.apikey);
         }
         this.soupSession.queue_message(msg, Lang.bind(this, this._connectionsReceived, uri));
-    },
+    }
 
     update() {
         if (this.uri) {
             this.configRequest(this.uri, this.apikey);
         }
-    },
+    }
 
     stop() {
         this._setConnectionState("disconnected");
@@ -348,15 +343,15 @@ var SyncthingSession = new Lang.Class({
             this.emit("folder-removed", folder);
         }
         this.folders = new Map();
-    },
+    }
 
     setUpdateInterval(start, end) {
         this._timeoutManager.changeTimeout(start, end);
-    },
+    }
 
     start() {
         this._timeoutManager.start();
-    },
+    }
 
     cancelAllUpdates() {
         if (this._connections_soup_msg)
@@ -366,7 +361,7 @@ var SyncthingSession = new Lang.Class({
         for (let folder of this.folders.values()) {
             folder.cancelUpdate();
         }
-    },
+    }
 
     setParams(uri, apikey) {
         this.uri = uri;
@@ -375,29 +370,27 @@ var SyncthingSession = new Lang.Class({
         this.lastTotal = null;
         this._setUpDownState("none");
         this.cancelAllUpdates();
-    },
+    }
 
     destroy() {
         this.cancelAllUpdates();
         this._timeoutManager.stop();
-    },
+    }
 });
 
 
 
-const TimeoutManager = new Lang.Class({
-    Name: "TimeoutManager",
-
+const TimeoutManager = class {
     // The TimeoutManager starts with a timespan of minimum seconds,
     // after which the function func is called and the timeout
     // is exponentially expanded to 2*minimum, 2*2*minimum, etc. seconds.
     // When the timeout overflows maximum seconds,
     // it is set to the final value of maximum seconds.
-    _init(func, minimum=1, maximum=1) {
+    constructor(func, minimum=1, maximum=1) {
         this.func = func;
         this.minimum = minimum;
         this.maximum = maximum;
-    },
+    }
 
     changeTimeout(minimum, maximum) {
         this.minimum = minimum;
@@ -408,7 +401,7 @@ const TimeoutManager = new Lang.Class({
             this._current = this.minimum;
             this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this._current, Lang.bind(this, this._callback));
         }
-    },
+    }
 
     _callback() {
         this.func();
@@ -423,20 +416,20 @@ const TimeoutManager = new Lang.Class({
         }
         this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this._current, Lang.bind(this, this._callback));
         return GLib.SOURCE_REMOVE;
-    },
+    }
 
     start() {
         if (! this._source) {
             this._current = this.minimum;
             this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this._current, Lang.bind(this, this._callback));
         }
-    },
+    }
 
     stop() {
         if (this._source) {
             GLib.Source.remove(this._source);
             this._source = null;
         }
-    },
-});
+    }
+}
 

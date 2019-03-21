@@ -13,13 +13,10 @@ const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;
 
-const SyncthingIconPrefsWidget = new GObject.Class({
-    Name: "SyncthingIcon.Prefs.Widget",
-    GTypeName: "SyncthingIconPrefsWidget",
-    Extends: Gtk.Grid,
-
+const SyncthingIconPrefsWidget = GObject.registerClass(
+class SyncthingIconPrefsWidget extends Gtk.Grid {
     _init(params) {
-        this.parent(params);
+        super._init(params);
         this._settings = Convenience.getSettings();
 
         this.margin = 18;
@@ -85,7 +82,7 @@ const SyncthingIconPrefsWidget = new GObject.Class({
 
         autoSwitch.connect("notify::active", Lang.bind(this, this._onSwitch));
         this._onSwitch(autoSwitch);
-    },
+    }
 
     _onSwitch(obj, pspec) {
         // set all widgets in rows 1 and 2 to sensitive/insensitive
@@ -96,11 +93,11 @@ const SyncthingIconPrefsWidget = new GObject.Class({
                     widget.set_sensitive(! obj.active);
             }
         }
-    },
+    }
 
     _onReset(button) {
         this._settings.reset("configuration-uri");
-    },
+    }
 });
 
 function init(metadata) {

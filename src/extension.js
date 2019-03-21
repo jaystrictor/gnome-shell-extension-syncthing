@@ -30,19 +30,16 @@ function myLog(msg) {
     log(`[syncthingicon] ${msg}`);
 }
 
-const FolderList = new Lang.Class({
-    Name: "FolderList",
-    Extends: PopupMenu.PopupMenuSection,
-
-    _init(api) {
-        this.parent();
+const FolderList = class extends PopupMenu.PopupMenuSection {
+    constructor(api) {
+        super();
         this._api = api;
         this.folder_ids = [];
         // this.folders is a Map() that maps: (id: String) -> menuitem: FolderMenuItem
         this.folders = new Map();
         this._folderAddedNotifyId = this._api.connect("folder-added", this._addFolder.bind(this));
         this._folderRemovedNotifyId = this._api.connect("folder-removed", this._removeFolder.bind(this));
-    },
+    }
 
     _addFolder(session, folder) {
         let id = folder.id;
@@ -51,7 +48,7 @@ const FolderList = new Lang.Class({
         let menuitem = new FolderMenuItem(folder);
         this.addMenuItem(menuitem, position);
         this.folders.set(id, menuitem);
-    },
+    }
 
     _removeFolder(session, folder) {
         let id = folder.id;
@@ -60,7 +57,7 @@ const FolderList = new Lang.Class({
         let menuitem = this.folders.get(removed[0]);
         menuitem.destroy();
         this.folders.delete(id);
-    },
+    }
 
     /* http://stackoverflow.com/a/21822316/3472468 */
     _sortedIndex(value) {
@@ -73,7 +70,7 @@ const FolderList = new Lang.Class({
             else high = mid;
         }
         return low;
-    },
+    }
 
     destroy() {
         if (this._folderAddedNotifyId > 0) {
@@ -83,16 +80,13 @@ const FolderList = new Lang.Class({
             this._api.disconnect(this._folderRemovedNotifyId);
         }
         this._api = null;
-        this.parent();
-    },
-});
+        super.destroy();
+    }
+}
 
-const FolderMenuItem = new Lang.Class({
-    Name: "FolderMenuItem",
-    Extends: PopupMenu.PopupBaseMenuItem,
-
-    _init(folder) {
-        this.parent();
+const FolderMenuItem = class extends PopupMenu.PopupBaseMenuItem {
+    constructor(folder) {
+        super();
         this.folder = folder;
         this._icon = new St.Icon({ gicon: this._getIcon(folder.path),
                                    style_class: "popup-menu-icon" });
@@ -113,7 +107,7 @@ const FolderMenuItem = new Lang.Class({
         this._folderStateChangedNotifyId = this.folder.connect("state-changed", this._folderStateChanged.bind(this));
         this._folderLabelChangedNotifyId = this.folder.connect("label-changed", this._folderLabelChanged.bind(this));
         this._folderPathChangedNotifyId = this.folder.connect("path-changed", this._folderPathChanged.bind(this));
-    },
+    }
 
     _getIcon(path) {
         if (! path) {
@@ -134,7 +128,7 @@ const FolderMenuItem = new Lang.Class({
                 throw e;
             }
         }
-    },
+    }
 
     activate(event) {
         let path = this.folder.path;
@@ -148,16 +142,16 @@ const FolderMenuItem = new Lang.Class({
             Main.notifyError(_("Failed to launch URI “%s”").format(uri), e.message);
         }
 
-        this.parent(event);
-    },
+        super.activate(event);
+    }
 
     _folderPathChanged(folder, path) {
         this._icon.gicon = this._getIcon(path);
-    },
+    }
 
     _folderLabelChanged(folder, label) {
         this._label.text = label;
-    },
+    }
 
     _folderStateChanged(folder, state) {
         if (state === "idle") {
@@ -181,13 +175,13 @@ const FolderMenuItem = new Lang.Class({
             this._label_state.set_text("");
             this._statusIcon.icon_name = "question";
         }
-    },
+    }
 
     _syncPercentage(model) {
         if (model.globalBytes === 0)
             return 100;
         return Math.floor(100 * model.inSyncBytes / model.globalBytes);
-    },
+    }
 
     destroy() {
         if (this._folderStateChangedNotifyId > 0) {
@@ -200,9 +194,9 @@ const FolderMenuItem = new Lang.Class({
             this.folder.disconnect(this._folderPathChangedNotifyId);
         }
         this.folder = null;
-        this.parent();
-    },
-});
+        super.destroy();
+    }
+}
 
 
 const SyncthingMenu = new Lang.Class({

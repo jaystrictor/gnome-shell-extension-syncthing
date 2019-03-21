@@ -3,6 +3,7 @@
 const Gio = imports.gi.Gio;
 const Gtk = imports.gi.Gtk;
 const Lang = imports.lang;
+const GObject = imports.gi.GObject;
 const WebKit = imports.gi.WebKit2;
 
 function getCurrentDir() {
@@ -39,12 +40,10 @@ function getSettings() {
 }
 const Settings = getSettings();
 
-const SyncthingWindow = new Lang.Class({
-    Name: "SyncthingWindow",
-    Extends: Gtk.ApplicationWindow,
-
+const SyncthingWindow = GObject.registerClass(
+class SyncthingWindow extends Gtk.ApplicationWindow {
     _init(application) {
-        this.parent({ application: application, icon_name: "syncthing" });
+        super._init({ application: application, icon_name: "syncthing" });
         this.set_default_size(1300,800);
         this.set_wmclass ("Syncthing", "Syncthing");
         this.title = "Syncthing";
@@ -54,7 +53,7 @@ const SyncthingWindow = new Lang.Class({
         this._webView.connect("decide-policy", Lang.bind(this, this._onDecidePolicy));
         this.add(this._webView);
         this._webView.show();
-    },
+    }
 
     loadURI(uri, apikey) {
         let request = WebKit.URIRequest.new(uri);
@@ -63,11 +62,11 @@ const SyncthingWindow = new Lang.Class({
             headers.append("X-API-Key", apikey);
         }
         this._webView.load_request(request);
-    },
+    }
 
     _onContextMenu(web_view, context_menu, event, hit_test_result) {
         return true;
-    },
+    }
 
     _onDecidePolicy(web_view, decision, decision_type) {
         if (decision_type == WebKit.PolicyDecisionType.NEW_WINDOW_ACTION) {
@@ -87,28 +86,27 @@ const SyncthingWindow = new Lang.Class({
             // Continue with default handler.
             return false;
         }
-    },
+    }
 });
 
-const SyncthingViewer = new Lang.Class({
-    Name: "SyncthingViewer",
-    Extends: Gtk.Application,
+const SyncthingViewer = GObject.registerClass(
+class SyncthingViewer extends Gtk.Application {
 
     _init() {
-        this.parent({ application_id: "net.syncthing.gtk.webview" });
-    },
+        super._init({ application_id: "net.syncthing.gtk.webview" });
+    }
 
 
     _onCommandLine(application, command_line) {
         return 0;
-    },
+    }
 
     vfunc_activate() {
         this._window.present();
-    },
+    }
 
     vfunc_startup() {
-        this.parent();
+        super.vfunc_startup();
         let icon_theme = Gtk.IconTheme.get_default();
         icon_theme.prepend_search_path(`icons`);
         this._window = new SyncthingWindow(this);
@@ -121,14 +119,14 @@ const SyncthingViewer = new Lang.Class({
         menumodel.append("Quit", "app.quit");
         menumodel.freeze();
         this.set_app_menu(menumodel);
-    },
+    }
 
     _addSimpleAction(name, callback) {
         let action = new Gio.SimpleAction({ name: name });
         action.connect("activate", callback);
         this.add_action(action);
         return action;
-    },
+    }
 
     _onSettingsChanged(settings, key) {
         if (Settings.get_boolean("autoconfig")) {
@@ -148,7 +146,7 @@ const SyncthingViewer = new Lang.Class({
             let apikey = Settings.get_string("api-key");
             this._changeConfig(uri, apikey);
         }
-    },
+    }
 
     _onAutoConfigChanged(config) {
         let uri;
@@ -161,14 +159,14 @@ const SyncthingViewer = new Lang.Class({
             apikey = config["apikey"];
         }
         this._changeConfig(uri, apikey);
-    },
+    }
 
     _changeConfig(uri, apikey) {
         if (uri == this.baseURI)
             return;
         this.baseURI = uri;
         this._window.loadURI(uri, apikey);
-    },
+    }
 });
 
 

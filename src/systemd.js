@@ -11,34 +11,31 @@ function myLog(msg) {
 }
 
 
-var Control = new Lang.Class({
-    Name: "Control",
-    Extends: GObject.Object,
+var Control = GObject.registerClass({
     Signals: {
         "state-changed": {
             // "systemd-not-available", "unit-not-loaded", "active", or "inactive"
             param_types: [ GObject.TYPE_STRING ],
         },
     },
-
-
+}, class Control extends GObject.Object {
     _init(end_interval) {
-        this.parent();
+        super._init();
         this.state = "INIT";
         this._timeoutManager = new TimeoutManager(1, end_interval, Lang.bind(this, this.update));
-    },
+    }
 
     startService() {
         let argv = "/bin/systemctl --user start syncthing.service";
         let [ok, pid] = GLib.spawn_async(null, argv.split(" "), null, GLib.SpawnFlags.SEARCH_PATH, null);
         GLib.spawn_close_pid(pid);
-    },
+    }
 
     stopService() {
         let argv = "/bin/systemctl --user stop syncthing.service";
         let [ok, pid] = GLib.spawn_async(null, argv.split(" "), null, GLib.SpawnFlags.SEARCH_PATH, null);
         GLib.spawn_close_pid(pid);
-    },
+    }
 
     _parseLoadState(data) {
         if (data.slice(0, 10) !== "LoadState=") {
@@ -59,7 +56,7 @@ var Control = new Lang.Class({
             default:
                 throw `Error parsing systemd LoadState=${loadState}`;
         }
-    },
+    }
 
     _parseActiveState(data) {
         if (data.slice(0, 12) !== "ActiveState=") {
@@ -80,7 +77,7 @@ var Control = new Lang.Class({
                 throw `Error parsing systemd ActiveState=${activeState}`;
         }
 
-    },
+    }
 
     _parseData(bytes) {
         // Here we consolidate the different systemd LoadState and ActiveState states
@@ -103,7 +100,7 @@ var Control = new Lang.Class({
         } else {
             return "inactive";
         }
-    },
+    }
 
     _onSystemdStateReceived(object, result) {
         try {
@@ -114,7 +111,7 @@ var Control = new Lang.Class({
             myLog(e);
             this._setState("unit-not-loaded");
         }
-    },
+    }
 
     _updateSystemdState() {
         if (this._childSource)
@@ -137,26 +134,26 @@ var Control = new Lang.Class({
         // Maybe we should wait here for the subprocess to finish with
         // this._subprocess.wait_async()
         // But on the other hand, the process should not be around for a long time.
-    },
+    }
 
     _setState(newState) {
         if (newState !== this.state) {
             this.state = newState;
             this.emit("state-changed", this.state);
         }
-    },
+    }
 
     update() {
         this._updateSystemdState();
-    },
+    }
 
     setUpdateInterval(start, end) {
         this._timeoutManager.changeTimeout(start, end);
-    },
+    }
 
     destroy() {
         this._timeoutManager.cancel();
-    },
+    }
 });
 
 
@@ -170,27 +167,25 @@ function bytes2String(bytes) {
 }
 
 
-const TimeoutManager = new Lang.Class({
-    Name: "TimeoutManager",
-
+const TimeoutManager = class {
     // The TimeoutManager starts with a timespan of start seconds,
     // after which the function func is called and the timeout
     // is exponentially expanded to 2*start, 2*2*start, etc. seconds.
     // When the timeout overflows end seconds,
     // it is set to the final value of end seconds.
-    _init(start, end, func) {
+    constructor(start, end, func) {
         this._current = start;
         this.end = end;
         this.func = func;
         this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, start, Lang.bind(this, this._callback));
-    },
+    }
 
     changeTimeout(start, end) {
         GLib.Source.remove(this._source);
         this._current = start;
         this.end = end;
         this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, start, Lang.bind(this, this._callback));
-    },
+    }
 
     _callback() {
         this.func();
@@ -205,10 +200,10 @@ const TimeoutManager = new Lang.Class({
         }
         this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this._current, Lang.bind(this, this._callback));
         return GLib.SOURCE_REMOVE;
-    },
+    }
 
     cancel() {
         GLib.Source.remove(this._source);
-    },
-});
+    }
+}
 

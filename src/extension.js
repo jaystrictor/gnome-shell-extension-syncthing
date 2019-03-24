@@ -30,6 +30,18 @@ function myLog(msg) {
     log(`[syncthingicon] ${msg}`);
 }
 
+function getStatusIcon(iconName) {
+    let path = Me.dir.get_path() + "/icons/hicolor/scalable/status/" + iconName + ".svg";
+    let gicon = Gio.icon_new_for_string(path);
+    return gicon;
+}
+
+function getSyncthingIcon(iconName) {
+    let path = Me.dir.get_path() + "/icons/hicolor/symbolic/apps/syncthing-symbolic.svg";
+    let gicon = Gio.icon_new_for_string(path);
+    return gicon;
+}
+
 const FolderList = class extends PopupMenu.PopupMenuSection {
     constructor(api) {
         super();
@@ -156,24 +168,24 @@ const FolderMenuItem = class extends PopupMenu.PopupBaseMenuItem {
     _folderStateChanged(folder, state) {
         if (state === "idle") {
             this._label_state.set_text("");
-            this._statusIcon.icon_name = "";
+            this._statusIcon.gicon = null;
         } else if (state === "scanning") {
             this._label_state.set_text("");
-            this._statusIcon.icon_name = "database";
+            this._statusIcon.gicon = getStatusIcon("database");
         } else if (state === "syncing") {
             let pct = this._syncPercentage(model);
             this._label_state.set_text("%d\u2009%%".format(pct));
-            this._statusIcon.icon_name = "exchange";
+            this._statusIcon.gicon = getStatusIcon("exchange");
         } else if (state === "error") {
             this._label_state.set_text("");
-            this._statusIcon.icon_name = "exclamation-triangle";
+            this._statusIcon.gicon = getStatusIcon("exclamation-triangle");
         } else if (state === "unknown") {
             this._label_state.set_text("");
-            this._statusIcon.icon_name = "question";
+            this._statusIcon.gicon = getStatusIcon("question");
         } else {
             myLog(`unknown syncthing folder state: ${state}`);
             this._label_state.set_text("");
-            this._statusIcon.icon_name = "question";
+            this._statusIcon.gicon = getStatusIcon("question");
         }
     }
 
@@ -229,7 +241,7 @@ const SyncthingMenu = new Lang.Class({
         let box = new St.BoxLayout();
         this.actor.add_child(box);
 
-        this._syncthingIcon = new St.Icon({ icon_name: "syncthing-symbolic",
+        this._syncthingIcon = new St.Icon({ gicon: getSyncthingIcon(),
                                           style_class: "system-status-icon syncthing-logo-icon" });
         box.add_child(this._syncthingIcon);
 
@@ -391,11 +403,11 @@ const SyncthingMenu = new Lang.Class({
 
     _updateStatusIcon() {
         if (this.api_state === "connected") {
-            this._statusIcon.icon_name = "";
+            this._statusIcon.gicon = null;
         } else if (this.systemd_state !== "inactive") {
-            this._statusIcon.icon_name = "exclamation-triangle";
+            this._statusIcon.gicon = getStatusIcon("exclamation-triangle");
         } else {
-            this._statusIcon.icon_name = "pause";
+            this._statusIcon.gicon = getStatusIcon("pause");
         }
     },
 

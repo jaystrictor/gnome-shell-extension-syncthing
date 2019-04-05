@@ -44,8 +44,9 @@ function getSyncthingIcon(iconName) {
 }
 
 const FolderList = class extends PopupMenu.PopupMenuSection {
-    constructor(api) {
+    constructor(menu, api) {
         super();
+        this._menu = menu;
         this._api = api;
         this.folder_ids = [];
         // this.folders is a Map() that maps: (id: String) -> menuitem: FolderMenuItem
@@ -61,6 +62,7 @@ const FolderList = class extends PopupMenu.PopupMenuSection {
         let menuitem = new FolderMenuItem(folder);
         this.addMenuItem(menuitem, position);
         this.folders.set(id, menuitem);
+        this._menu.notifyListChanged();
     }
 
     _removeFolder(session, folder) {
@@ -70,6 +72,7 @@ const FolderList = class extends PopupMenu.PopupMenuSection {
         let menuitem = this.folders.get(removed[0]);
         menuitem.destroy();
         this.folders.delete(id);
+        this._menu.notifyListChanged();
     }
 
     /* http://stackoverflow.com/a/21822316/3472468 */
@@ -267,10 +270,11 @@ class SyncthingMenu extends PanelMenu.Button {
         this.item_config.setSensitive(false);
 
         // 3. Separator
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        this.separator = new PopupMenu.PopupSeparatorMenuItem();
+        this.menu.addMenuItem(this.separator);
 
         // 4. Folder List
-        this.folder_list = new FolderList(this._api);
+        this.folder_list = new FolderList(this, this._api);
         this.menu.addMenuItem(this.folder_list);
     }
 
@@ -408,6 +412,10 @@ class SyncthingMenu extends PanelMenu.Button {
         } else {
             this._statusIcon.gicon = getStatusIcon("pause");
         }
+    }
+
+    notifyListChanged() {
+        this.menu._updateSeparatorVisibility(this.separator);
     }
 
     destroy() {

@@ -13,7 +13,7 @@ function myLog(msg) {
 var Folder = GObject.registerClass({
     Signals: {
         "state-changed": {
-            param_types: [ GObject.TYPE_STRING ],
+            param_types: [ GObject.TYPE_STRING, GObject.TYPE_INT ],
         },
         "label-changed": {
             param_types: [ GObject.TYPE_STRING ],
@@ -54,6 +54,7 @@ var Folder = GObject.registerClass({
         let model = JSON.parse(data);
         //log(JSON.stringify(model, null, 2));
         let state = model.state;
+        let pct = model.globalBytes == 0 ? 100 : Math.floor(100 * model.inSyncBytes / model.globalBytes);
 
         switch (state) {
         // folder states are defined in https://github.com/syncthing/syncthing/blob/master/lib/model/folderstate.go
@@ -67,9 +68,10 @@ var Folder = GObject.registerClass({
                 myLog(`Unknown syncthing folder state: ${state}`);
                 this.state = "unknown";
         }
-        if (this.state !== state) {
+        if (this.state !== state || this.pct !== pct) {
             this.state = state;
-            this.emit("state-changed", this.state);
+            this.pct = pct;
+            this.emit("state-changed", this.state, this.pct);
         }
     }
 

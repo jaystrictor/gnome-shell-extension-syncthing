@@ -169,34 +169,34 @@ const FolderMenuItem = class extends PopupMenu.PopupBaseMenuItem {
         this._label.text = label;
     }
 
-    _folderStateChanged(folder, state) {
-        if (state === "idle") {
-            this._label_state.set_text("");
-            this._statusIcon.gicon = null;
-        } else if (state === "scanning") {
-            this._label_state.set_text("");
-            this._statusIcon.gicon = getStatusIcon("database");
-        } else if (state === "syncing") {
-            let pct = this._syncPercentage(model);
-            this._label_state.set_text("%d\u2009%%".format(pct));
-            this._statusIcon.gicon = getStatusIcon("exchange");
-        } else if (state === "error") {
-            this._label_state.set_text("");
-            this._statusIcon.gicon = getStatusIcon("exclamation-triangle");
-        } else if (state === "unknown") {
-            this._label_state.set_text("");
-            this._statusIcon.gicon = getStatusIcon("question");
-        } else {
-            myLog(`unknown syncthing folder state: ${state}`);
-            this._label_state.set_text("");
-            this._statusIcon.gicon = getStatusIcon("question");
+    _folderStateChanged(folder, state, pct) {
+        switch (state) {
+            case "idle":
+                let label = (pct == 100) ? "" : "%d\u2009%%".format(pct);
+                this._label_state.set_text(label);
+                this._statusIcon.gicon = null;
+                break;
+            case "scanning":
+                this._label_state.set_text("");
+                this._statusIcon.gicon = getStatusIcon("database");
+                break;
+            case "syncing":
+                this._label_state.set_text("%d\u2009%%".format(pct));
+                this._statusIcon.gicon = getStatusIcon("exchange");
+                break;
+            case "error":
+                this._label_state.set_text("");
+                this._statusIcon.gicon = getStatusIcon("exclamation-triangle");
+                break;
+            case "unknown":
+                this._label_state.set_text("");
+                this._statusIcon.gicon = getStatusIcon("question");
+                break;
+            default:
+                myLog(`unknown syncthing folder state: ${state}`);
+                this._label_state.set_text("");
+                this._statusIcon.gicon = getStatusIcon("question");
         }
-    }
-
-    _syncPercentage(model) {
-        if (model.globalBytes === 0)
-            return 100;
-        return Math.floor(100 * model.inSyncBytes / model.globalBytes);
     }
 
     destroy() {

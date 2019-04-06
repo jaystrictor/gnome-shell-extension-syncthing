@@ -182,7 +182,7 @@ const FolderMenuItem = class extends PopupMenu.PopupBaseMenuItem {
                 break;
             case "syncing":
                 this._label_state.set_text("%d\u2009%%".format(pct));
-                this._statusIcon.gicon = getStatusIcon("exchange");
+                this._statusIcon.gicon = getStatusIcon("cloud-down");
                 break;
             case "error":
                 this._label_state.set_text("");

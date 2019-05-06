@@ -5,7 +5,6 @@ const Lang = imports.lang;
 const Clutter = imports.gi.Clutter;
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
-const GObject = imports.gi.GObject;
 const Gtk = imports.gi.Gtk;
 const Soup = imports.gi.Soup;
 const St = imports.gi.St;
@@ -215,10 +214,12 @@ const FolderMenuItem = class extends PopupMenu.PopupBaseMenuItem {
 }
 
 
-const SyncthingMenu = GObject.registerClass(
-class SyncthingMenu extends PanelMenu.Button {
+const SyncthingMenu = new Lang.Class({
+    Name: "SyncthingMenu",
+    Extends: PanelMenu.Button,
+
     _init() {
-        super._init(0.0, "Syncthing", false);
+        this.parent(0.0, "Syncthing", false);
 
         this._api = new SyncthingApi.SyncthingSession();
         this._systemd = new Systemd.Control(64);
@@ -237,7 +238,7 @@ class SyncthingMenu extends PanelMenu.Button {
 
         Settings.connect("changed", this._onSettingsChanged.bind(this));
         this._onSettingsChanged();
-    }
+    },
 
     _initButton() {
         let box = new St.BoxLayout();
@@ -253,7 +254,7 @@ class SyncthingMenu extends PanelMenu.Button {
         this.status_label = new St.Label({ style: "font-size: 70%;",
                                          y_align: Clutter.ActorAlign.CENTER });
         box.add_child(this.status_label);
-    }
+    },
 
     _initMenu() {
         // 1. Syncthing On/Off Switch
@@ -276,7 +277,7 @@ class SyncthingMenu extends PanelMenu.Button {
         // 4. Folder List
         this.folder_list = new FolderList(this, this._api);
         this.menu.addMenuItem(this.folder_list);
-    }
+    },
 
     _menuOpenStateChanged(menu, open) {
         if (open) {
@@ -288,7 +289,7 @@ class SyncthingMenu extends PanelMenu.Button {
             this._systemd.setUpdateInterval(8, 64);
             this._api.setUpdateInterval(8, 64);
         }
-    }
+    },
 
     _onSettingsChanged(settings, key) {
         this.externalBrowser = Settings.get_boolean("external-browser");
@@ -311,7 +312,7 @@ class SyncthingMenu extends PanelMenu.Button {
         }
 
         this._api.setParams(this.baseURI, this.apikey);
-    }
+    },
 
     _onAutoConfigChanged(config) {
         if (config === null) {
@@ -323,7 +324,7 @@ class SyncthingMenu extends PanelMenu.Button {
         }
 
         this._api.setParams(this.baseURI, this.apikey);
-    }
+    },
 
     _onConfig(actor, event) {
         if (!this.externalBrowser && this.baseURI.startsWith("http://")) {
@@ -336,13 +337,13 @@ class SyncthingMenu extends PanelMenu.Button {
                 Main.notifyError(_("Failed to launch URI “%s”").format(this.baseURI), e.message);
             }
         }
-    }
+    },
 
     _openWebView() {
         let working_dir = Me.dir.get_path();
         let [ok, pid] = GLib.spawn_async(working_dir, ["gjs", "webviewer.js"], null, GLib.SpawnFlags.SEARCH_PATH, null);
         GLib.spawn_close_pid(pid);
-    }
+    },
 
     _onSwitch(actor, event) {
         if (actor.state) {
@@ -353,7 +354,7 @@ class SyncthingMenu extends PanelMenu.Button {
             this._systemd.setUpdateInterval(1, 64);
         }
         this._systemd.update();
-    }
+    },
 
     _onSystemdStateChanged(control, state) {
         switch (state) {
@@ -387,7 +388,7 @@ class SyncthingMenu extends PanelMenu.Button {
         }
         this.systemd_state = state;
         this._updateStatusIcon();
-    }
+    },
 
     _onApiStateChanged(session, state) {
         switch (state) {
@@ -402,7 +403,7 @@ class SyncthingMenu extends PanelMenu.Button {
         }
         this.api_state = state;
         this._updateStatusIcon();
-    }
+    },
 
     _updateStatusIcon() {
         if (this.api_state === "connected") {
@@ -412,11 +413,11 @@ class SyncthingMenu extends PanelMenu.Button {
         } else {
             this._statusIcon.gicon = getStatusIcon("pause");
         }
-    }
+    },
 
     notifyListChanged() {
         this.menu._updateSeparatorVisibility(this.separator);
-    }
+    },
 
     destroy() {
         if (this._api)
@@ -425,8 +426,8 @@ class SyncthingMenu extends PanelMenu.Button {
             this._systemd.destroy();
         if (this._configFileWatcher)
             this._configFileWatcher.destroy();
-        super.destroy();
-    }
+        this.parent();
+    },
 });
 
 

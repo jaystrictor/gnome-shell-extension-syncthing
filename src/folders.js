@@ -68,6 +68,13 @@ var FolderList = class extends PopupMenu.PopupMenuSection {
 }
 
 
+function getFolderStatusIcon(iconName) {
+    let path = Me.dir.get_path() + "/icons/hicolor/scalable/status/" + iconName + ".svg";
+    let gicon = Gio.icon_new_for_string(path);
+    return gicon;
+}
+
+
 var FolderMenuItem = GObject.registerClass(
 class FolderMenuItem extends PopupMenu.PopupBaseMenuItem {
     _init(folder) {
@@ -147,24 +154,24 @@ class FolderMenuItem extends PopupMenu.PopupBaseMenuItem {
                 break;
             case "scanning":
                 this._label_state.set_text("");
-                this._statusIcon.gicon = getStatusIcon("database");
+                this._statusIcon.gicon = getFolderStatusIcon("database");
                 break;
             case "syncing":
                 this._label_state.set_text("%d\u2009%%".format(pct));
-                this._statusIcon.gicon = getStatusIcon("cloud-down");
+                this._statusIcon.gicon = getFolderStatusIcon("cloud-down");
                 break;
             case "error":
                 this._label_state.set_text("");
-                this._statusIcon.gicon = getStatusIcon("exclamation-triangle");
+                this._statusIcon.gicon = getFolderStatusIcon("exclamation-triangle");
                 break;
             case "unknown":
                 this._label_state.set_text("");
-                this._statusIcon.gicon = getStatusIcon("question");
+                this._statusIcon.gicon = getFolderStatusIcon("question");
                 break;
             default:
                 myLog(`unknown syncthing folder state: ${state}`);
                 this._label_state.set_text("");
-                this._statusIcon.gicon = getStatusIcon("question");
+                this._statusIcon.gicon = getFolderStatusIcon("question");
         }
     }
 

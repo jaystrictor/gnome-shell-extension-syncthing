@@ -2,6 +2,7 @@
 
 const Clutter = imports.gi.Clutter;
 const Gio = imports.gi.Gio;
+const GObject = imports.gi.GObject;
 const St = imports.gi.St;
 
 
@@ -9,7 +10,7 @@ const Main = imports.ui.main;
 const PopupMenu = imports.ui.popupMenu;
 
 
-const FolderList = class extends PopupMenu.PopupMenuSection {
+var FolderList = class extends PopupMenu.PopupMenuSection {
     constructor(menu, api) {
         super();
         this._menu = menu;
@@ -66,9 +67,11 @@ const FolderList = class extends PopupMenu.PopupMenuSection {
     }
 }
 
-const FolderMenuItem = class extends PopupMenu.PopupBaseMenuItem {
-    constructor(folder) {
-        super();
+
+var FolderMenuItem = GObject.registerClass(
+class FolderMenuItem extends PopupMenu.PopupBaseMenuItem {
+    _init(folder) {
+        super._init();
         this.folder = folder;
         this._icon = new St.Icon({ gicon: this._getIcon(folder.path),
                                    style_class: "popup-menu-icon" });
@@ -178,5 +181,5 @@ const FolderMenuItem = class extends PopupMenu.PopupBaseMenuItem {
         this.folder = null;
         super.destroy();
     }
-}
+});
 

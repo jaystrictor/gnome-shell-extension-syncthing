@@ -71,7 +71,7 @@ const SyncthingMenu = new Lang.Class({
 
     _initButton() {
         let box = new St.BoxLayout();
-        this.actor.add_child(box);
+        this.add_actor(box);
 
         this._syncthingIcon = new St.Icon({ gicon: getSyncthingIcon(),
                                           style_class: "system-status-icon syncthing-logo-icon" });

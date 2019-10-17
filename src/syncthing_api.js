@@ -43,7 +43,7 @@ var Folder = GObject.registerClass({
             myLog(`Failed to obtain folder information for id “${this.id}”.`);
             this._setFolderConfig(null);
             this.state = "unknown";
-            this.emit("state-changed", this.state);
+            this.emit("state-changed", this.state, 0);
             return;
         }
         let data = msg.response_body.data;

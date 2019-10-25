@@ -9,6 +9,8 @@ const St = imports.gi.St;
 const Main = imports.ui.main;
 const PopupMenu = imports.ui.popupMenu;
 
+const ExtensionUtils = imports.misc.extensionUtils;
+const Me = ExtensionUtils.getCurrentExtension();
 
 var FolderList = class extends PopupMenu.PopupMenuSection {
     constructor(menu, api) {

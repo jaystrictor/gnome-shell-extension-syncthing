@@ -90,9 +90,7 @@ const SyncthingMenu = new Lang.Class({
         this.item_switch = null;
 
         // 2. Web Interface Button
-        let icon = (parseFloat(Config.PACKAGE_VERSION.substr(0, Config.PACKAGE_VERSION.indexOf(".", 3))) < 3.26) ?
-            "emblem-system-symbolic"
-            : new Gio.ThemedIcon({ name: "emblem-system-symbolic" });
+        let icon = new Gio.ThemedIcon({ name: "emblem-system-symbolic" });
 
         this.item_config = new PopupMenu.PopupImageMenuItem(_("Web Interface"), icon);
         this.item_config.connect("activate", this._onConfig.bind(this));

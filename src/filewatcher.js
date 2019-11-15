@@ -27,6 +27,7 @@ function probeDirectories() {
     const directories = [
         `${GLib.get_user_config_dir()}/syncthing`,
         `${GLib.get_home_dir()}/snap/syncthing/common/syncthing`,
+        `${GLib.get_home_dir()}/.var/app/me.kozec.syncthingtk/config/syncthing`,
     ];
     for (let dir of directories) {
         let configfile = Gio.File.new_for_path(`${dir}/config.xml`);

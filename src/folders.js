@@ -128,6 +128,9 @@ class FolderMenuItem extends PopupMenu.PopupBaseMenuItem {
         let path = this.folder.path;
         if (! path)
             return;
+        if (path.startsWith("~/")) {
+            path = "./" + path.substring(2);
+        }
         let uri = Gio.File.new_for_path(path).get_uri();
         let launchContext = global.create_app_launch_context(event.get_time(), -1);
         try {

@@ -155,27 +155,33 @@ class FolderMenuItem extends PopupMenu.PopupBaseMenuItem {
             case "idle":
                 let label = (pct == 100) ? "" : "%d\u2009%%".format(pct);
                 this._label_state.set_text(label);
+                this._statusIcon.visible = false;
                 this._statusIcon.gicon = null;
                 break;
             case "scanning":
                 this._label_state.set_text("");
+                this._statusIcon.visible = true;
                 this._statusIcon.gicon = getFolderStatusIcon("database");
                 break;
             case "syncing":
                 this._label_state.set_text("%d\u2009%%".format(pct));
+                this._statusIcon.visible = true;
                 this._statusIcon.gicon = getFolderStatusIcon("cloud-down");
                 break;
             case "error":
                 this._label_state.set_text("");
+                this._statusIcon.visible = true;
                 this._statusIcon.gicon = getFolderStatusIcon("exclamation-triangle");
                 break;
             case "unknown":
                 this._label_state.set_text("");
+                this._statusIcon.visible = true;
                 this._statusIcon.gicon = getFolderStatusIcon("question");
                 break;
             default:
                 myLog(`unknown syncthing folder state: ${state}`);
                 this._label_state.set_text("");
+                this._statusIcon.visible = true;
                 this._statusIcon.gicon = getFolderStatusIcon("question");
         }
     }

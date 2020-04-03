@@ -234,11 +234,15 @@ const SyncthingMenu = new Lang.Class({
 
     _updateStatusIcon() {
         if (this.api_state === "connected") {
+            this._statusIcon.visible = false;
             this._statusIcon.gicon = null;
-        } else if (this.systemd_state !== "inactive") {
-            this._statusIcon.gicon = getStatusIcon("exclamation-triangle");
         } else {
-            this._statusIcon.gicon = getStatusIcon("pause");
+            this._statusIcon.visible = true;
+            if (this.systemd_state !== "inactive") {
+                this._statusIcon.gicon = getStatusIcon("exclamation-triangle");
+            } else {
+                this._statusIcon.gicon = getStatusIcon("pause");
+            }
         }
     },
 

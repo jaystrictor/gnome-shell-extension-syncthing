@@ -46,6 +46,10 @@ or by typing `Alt+F2` `r` `Return`.
 ```sh
 gnome-shell-extension-tool -e syncthingicon@jay.strict@posteo.de
 ```
+or, starting from Gnome 3.36:
+```sh
+gnome-extensions enable syncthingicon@jay.strict@posteo.de
+```
 or, alternatively, you can enable the extension using Gnome Tweak Tool or
 the extension preferences GUI:
 ```sh

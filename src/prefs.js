@@ -106,7 +106,6 @@ function init(metadata) {
 
 function buildPrefsWidget() {
     let widget = new SyncthingIconPrefsWidget();
-    widget.show_all();
 
     return widget;
 }

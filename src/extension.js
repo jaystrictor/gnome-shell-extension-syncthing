@@ -74,7 +74,7 @@ const SyncthingMenu = new Lang.Class({
         this.add_actor(box);
 
         this._syncthingIcon = new St.Icon({ gicon: getSyncthingIcon(),
-                                          style_class: "system-status-icon syncthing-logo-icon" });
+                                          style_class: "system-status-icon" });
         box.add_child(this._syncthingIcon);
 
         this._statusIcon = new St.Icon({ style_class: "system-status-icon syncthing-status-icon" });

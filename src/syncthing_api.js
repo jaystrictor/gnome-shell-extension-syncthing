@@ -3,7 +3,6 @@
 const Gio = imports.gi.Gio;
 const GObject = imports.gi.GObject;
 const GLib = imports.gi.GLib;
-const Lang = imports.lang;
 const Soup = imports.gi.Soup;
 
 function myLog(msg) {
@@ -106,7 +105,7 @@ var Folder = GObject.registerClass({
         if (apikey) {
             this._soup_msg.request_headers.append("X-API-Key", apikey);
         }
-        soupSession.queue_message(this._soup_msg, Lang.bind(this, this._folderReceived));
+        soupSession.queue_message(this._soup_msg, this._folderReceived.bind(this));
     }
 
     cancelUpdate() {
@@ -142,7 +141,7 @@ var SyncthingSession = GObject.registerClass({
         this.folders = new Map();
         this.state = null;
 
-        this._timeoutManager = new TimeoutManager(Lang.bind(this, this.update));
+        this._timeoutManager = new TimeoutManager(this.update.bind(this));
         this._timeoutManager.changeTimeout(1, 64);
     }
 
@@ -158,7 +157,7 @@ var SyncthingSession = GObject.registerClass({
         this._setConnectionState("disconnected");
     }
 
-    _configReceived(session, msg, uri, apikey) {
+    _configReceived(uri, apikey, session, msg) {
         if (msg.status_code !== Soup.Status.OK) {
             this._statusNotOk(msg, uri);
             for (let folder of this.folders.values()) {
@@ -222,7 +221,7 @@ var SyncthingSession = GObject.registerClass({
         if (apikey) {
             msg.request_headers.append("X-API-Key", apikey);
         }
-        this.soupSession.queue_message(msg, Lang.bind(this, this._configReceived, uri, apikey));
+        this.soupSession.queue_message(msg, this._configReceived.bind(this, uri, apikey));
     }
 
     _parseConnections(data) {
@@ -306,7 +305,7 @@ var SyncthingSession = GObject.registerClass({
         }
     }
 
-    _connectionsReceived(session, msg, uri) {
+    _connectionsReceived(uri, session, msg) {
         if (msg.status_code !== Soup.Status.OK) {
             this._statusNotOk(msg, uri);
             // Do nothing.
@@ -326,7 +325,7 @@ var SyncthingSession = GObject.registerClass({
         if (this.apikey) {
             msg.request_headers.append("X-API-Key", this.apikey);
         }
-        this.soupSession.queue_message(msg, Lang.bind(this, this._connectionsReceived, uri));
+        this.soupSession.queue_message(msg, this._connectionsReceived.bind(this, uri));
     }
 
     update() {
@@ -401,7 +400,7 @@ const TimeoutManager = class {
         if (this._source) {
             GLib.Source.remove(this._source);
             this._current = this.minimum;
-            this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this._current, Lang.bind(this, this._callback));
+            this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this._current, this._callback.bind(this));
         }
     }
 
@@ -416,14 +415,14 @@ const TimeoutManager = class {
         if (this._current > this.maximum) {
             this._current = this.maximum;
         }
-        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this._current, Lang.bind(this, this._callback));
+        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this._current, this._callback.bind(this));
         return GLib.SOURCE_REMOVE;
     }
 
     start() {
         if (! this._source) {
             this._current = this.minimum;
-            this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this._current, Lang.bind(this, this._callback));
+            this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this._current, this._callback.bind(this));
         }
     }
 
@@ -434,4 +433,3 @@ const TimeoutManager = class {
         }
     }
 }
-

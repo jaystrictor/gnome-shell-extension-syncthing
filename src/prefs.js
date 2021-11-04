@@ -3,7 +3,6 @@
 const Gio = imports.gi.Gio;
 const Gtk = imports.gi.Gtk;
 const GObject = imports.gi.GObject;
-const Lang = imports.lang;
 
 const GETTEXT_DOMAIN = "gnome-shell-extension-syncthing";
 const Gettext = imports.gettext.domain(GETTEXT_DOMAIN);
@@ -50,7 +49,7 @@ class SyncthingIconPrefsWidget extends Gtk.Grid {
         let reset_button = new Gtk.Button({ label: "Reset",
                                             halign: Gtk.Align.END,
                                             valign: Gtk.Align.BASELINE });
-        reset_button.connect("clicked", Lang.bind(this, this._onReset));
+        reset_button.connect("clicked", this._onReset.bind(this));
         this.attach(reset_button, 2, 1, 1, 1);
         this._settings.bind("configuration-uri", uriEntry, "text", Gio.SettingsBindFlags.DEFAULT);
 
@@ -80,7 +79,7 @@ class SyncthingIconPrefsWidget extends Gtk.Grid {
         this._settings.bind("external-browser", externalBrowserSwitch, "active", Gio.SettingsBindFlags.DEFAULT);
 
 
-        autoSwitch.connect("notify::active", Lang.bind(this, this._onSwitch));
+        autoSwitch.connect("notify::active", this._onSwitch.bind(this));
         this._onSwitch(autoSwitch);
     }
 

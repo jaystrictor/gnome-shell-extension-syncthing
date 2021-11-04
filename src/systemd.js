@@ -3,7 +3,6 @@
 const Gio = imports.gi.Gio;
 const GObject = imports.gi.GObject;
 const GLib = imports.gi.GLib;
-const Lang = imports.lang;
 
 
 function myLog(msg) {
@@ -22,7 +21,7 @@ var Control = GObject.registerClass({
     _init(end_interval) {
         super._init();
         this.state = "INIT";
-        this._timeoutManager = new TimeoutManager(1, end_interval, Lang.bind(this, this.update));
+        this._timeoutManager = new TimeoutManager(1, end_interval, this.update.bind(this));
     }
 
     startService() {
@@ -121,7 +120,7 @@ var Control = GObject.registerClass({
         try {
             let subprocess = Gio.Subprocess.new(argv.split(" "), flags);
             this._stream = subprocess.get_stdout_pipe();
-            this._stream.read_bytes_async(60, GLib.PRIORITY_DEFAULT , null, Lang.bind(this, this._onSystemdStateReceived));
+            this._stream.read_bytes_async(60, GLib.PRIORITY_DEFAULT , null, this._onSystemdStateReceived.bind(this));
         } catch(e) {
             if (e.matches(GLib.spawn_error_quark(), GLib.SpawnError.NOENT)) {
                 // Failed to execute child process “/bin/systemctl” (No such file or directory)
@@ -177,14 +176,14 @@ const TimeoutManager = class {
         this._current = start;
         this.end = end;
         this.func = func;
-        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, start, Lang.bind(this, this._callback));
+        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, start, this._callback.bind(this));
     }
 
     changeTimeout(start, end) {
         GLib.Source.remove(this._source);
         this._current = start;
         this.end = end;
-        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, start, Lang.bind(this, this._callback));
+        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, start, this._callback.bind(this));
     }
 
     _callback() {
@@ -198,7 +197,7 @@ const TimeoutManager = class {
         if (this._current > this.end) {
             this._current = this.end;
         }
-        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this._current, Lang.bind(this, this._callback));
+        this._source = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, this._current, this._callback.bind(this));
         return GLib.SOURCE_REMOVE;
     }
 
@@ -206,4 +205,3 @@ const TimeoutManager = class {
         GLib.Source.remove(this._source);
     }
 }
-

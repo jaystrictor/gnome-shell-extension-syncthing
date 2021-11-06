@@ -262,9 +262,6 @@ const SyncthingMenu = new GObject.registerClass(
 
 function init(extension) {
     ExtensionUtils.initTranslations(GETTEXT_DOMAIN);
-    let icon_theme = new Gtk.IconTheme();
-    icon_theme.set_custom_theme(St.Settings.get().gtk_icon_theme);
-    icon_theme.prepend_search_path(`${extension.path}/icons`);
 }
 
 

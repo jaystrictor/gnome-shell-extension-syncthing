@@ -4,7 +4,6 @@ imports.gi.versions.Gtk = '3.0';
 imports.gi.versions.WebKit2 = '4.0';
 const Gio = imports.gi.Gio;
 const Gtk = imports.gi.Gtk;
-const Lang = imports.lang;
 const GObject = imports.gi.GObject;
 const WebKit = imports.gi.WebKit2;
 
@@ -51,8 +50,8 @@ class SyncthingWindow extends Gtk.ApplicationWindow {
         this.title = "Syncthing";
 
         this._webView = new WebKit.WebView();
-        this._webView.connect("context-menu", Lang.bind(this, this._onContextMenu));
-        this._webView.connect("decide-policy", Lang.bind(this, this._onDecidePolicy));
+        this._webView.connect("context-menu", this._onContextMenu.bind(this));
+        this._webView.connect("decide-policy", this._onDecidePolicy.bind(this));
         this.add(this._webView);
         this._webView.show();
     }
@@ -112,10 +111,10 @@ class SyncthingViewer extends Gtk.Application {
         let icon_theme = Gtk.IconTheme.get_default();
         icon_theme.prepend_search_path(`icons`);
         this._window = new SyncthingWindow(this);
-        Settings.connect("changed", Lang.bind(this, this._onSettingsChanged));
+        Settings.connect("changed", this._onSettingsChanged.bind(this));
         this._onSettingsChanged();
 
-        this._addSimpleAction("quit", Lang.bind(this, function() {this.quit();} ));
+        this._addSimpleAction("quit", () => {this.quit();});
         // create the GMenu
         let menumodel = new Gio.Menu();
         menumodel.append("Quit", "app.quit");
@@ -136,7 +135,7 @@ class SyncthingViewer extends Gtk.Application {
                 this._onAutoConfigChanged(null);
                 let configfile = Filewatcher.probeDirectories();
                 if (configfile !== null) {
-                    this._configFileWatcher = new Filewatcher.ConfigFileWatcher(Lang.bind(this, this._onAutoConfigChanged), configfile);
+                    this._configFileWatcher = new Filewatcher.ConfigFileWatcher(this._onAutoConfigChanged.bind(this), configfile);
                 }
             }
         } else {

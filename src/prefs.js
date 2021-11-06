@@ -10,13 +10,12 @@ const _ = Gettext.gettext;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const Convenience = Me.imports.convenience;
 
 const SyncthingIconPrefsWidget = GObject.registerClass(
 class SyncthingIconPrefsWidget extends Gtk.Grid {
     _init(params) {
         super._init(params);
-        this._settings = Convenience.getSettings();
+        this._settings = ExtensionUtils.getSettings();
 
         this.margin = 18;
         this.row_spacing = this.column_spacing = 12;
@@ -100,7 +99,7 @@ class SyncthingIconPrefsWidget extends Gtk.Grid {
 });
 
 function init(metadata) {
-    Convenience.initTranslations(GETTEXT_DOMAIN);
+    ExtensionUtils.initTranslations(GETTEXT_DOMAIN);
 }
 
 function buildPrefsWidget() {

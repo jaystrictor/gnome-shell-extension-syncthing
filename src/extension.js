@@ -19,7 +19,6 @@ const _ = Gettext.gettext;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const Settings = ExtensionUtils.getSettings();
 const Filewatcher = Me.imports.filewatcher;
 const Folders = Me.imports.folders;
 const SyncthingApi = Me.imports.syncthing_api;
@@ -48,6 +47,7 @@ const SyncthingMenu = new GObject.registerClass(
             super._init(0.0, "Syncthing", false);
 
             this._api = new SyncthingApi.SyncthingSession();
+            this._settings = ExtensionUtils.getSettings();
             this._systemd = new Systemd.Control(64);
 
             this._initButton();
@@ -62,7 +62,7 @@ const SyncthingMenu = new GObject.registerClass(
 
             this.menu.connect("open-state-changed", this._menuOpenStateChanged.bind(this));
 
-            Settings.connect("changed", this._onSettingsChanged.bind(this));
+            this._settingsChangedId = this._settings.connect("changed", this._onSettingsChanged.bind(this));
             this._onSettingsChanged();
         }
 
@@ -116,9 +116,9 @@ const SyncthingMenu = new GObject.registerClass(
         }
 
         _onSettingsChanged(settings, key) {
-            this.externalBrowser = Settings.get_boolean("external-browser");
+            this.externalBrowser = this._settings.get_boolean("external-browser");
 
-            if (Settings.get_boolean("autoconfig")) {
+            if (this._settings.get_boolean("autoconfig")) {
                 if (! this._configFileWatcher) {
                     this._onAutoConfigChanged(null);
                     let configfile = Filewatcher.probeDirectories();
@@ -131,8 +131,8 @@ const SyncthingMenu = new GObject.registerClass(
                     this._configFileWatcher.destroy();
                     this._configFileWatcher = null;
                 }
-                this.baseURI = Settings.get_string("configuration-uri");
-                this.apikey = Settings.get_string("api-key");
+                this.baseURI = this._settings.get_string("configuration-uri");
+                this.apikey = this._settings.get_string("api-key");
             }
 
             this._api.setParams(this.baseURI, this.apikey);
@@ -140,10 +140,10 @@ const SyncthingMenu = new GObject.registerClass(
 
         _onAutoConfigChanged(config) {
             if (config === null) {
-                this.baseURI = Settings.get_default_value("configuration-uri").unpack();
-                this.apikey = Settings.get_default_value("api-key").unpack();
+                this.baseURI = this._settings.get_default_value("configuration-uri").unpack();
+                this.apikey = this._settings.get_default_value("api-key").unpack();
             } else {
-                this.baseURI = config["uri"] || Settings.get_default_value("configuration-uri").unpack();
+                this.baseURI = config["uri"] || this._settings.get_default_value("configuration-uri").unpack();
                 this.apikey = config["apikey"];
             }
 
@@ -248,6 +248,7 @@ const SyncthingMenu = new GObject.registerClass(
         }
 
         destroy() {
+            this._settings.disconnect(this._settingsChangedId);
             if (this._api)
                 this._api.destroy();
             if (this._systemd)
@@ -275,4 +276,5 @@ function enable() {
 
 function disable() {
     _syncthing.destroy();
+    _syncthing = null;
 }

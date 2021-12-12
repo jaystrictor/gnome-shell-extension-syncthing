@@ -59,12 +59,17 @@ var Folder = GObject.registerClass({
         // folder states are defined in https://github.com/syncthing/syncthing/blob/master/lib/model/folderstate.go
             case "idle":
             case "scanning":
+            case "scan-waiting":
+            case "sync-waiting":
+            case "sync-preparing":
             case "syncing":
+            case "cleaning":
+            case "clean-waiting":
             case "error":
             case "unknown":
                 break;
             default:
-                myLog(`Unknown syncthing folder state: ${state}`);
+                myLog(`Unknown syncthing folder state "${state}"`);
                 this.state = "unknown";
         }
         if (this.state !== state || this.pct !== pct) {

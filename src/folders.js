@@ -12,6 +12,10 @@ const PopupMenu = imports.ui.popupMenu;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 
+function myLog(msg) {
+    log(`[syncthingicon] ${msg}`);
+}
+
 var FolderList = class extends PopupMenu.PopupMenuSection {
     constructor(menu, api) {
         super();
@@ -159,14 +163,23 @@ class FolderMenuItem extends PopupMenu.PopupBaseMenuItem {
                 this._statusIcon.gicon = null;
                 break;
             case "scanning":
+            case "scan-waiting":
                 this._label_state.set_text("");
                 this._statusIcon.visible = true;
                 this._statusIcon.gicon = getFolderStatusIcon("database");
                 break;
+            case "sync-waiting":
+            case "sync-preparing":
             case "syncing":
                 this._label_state.set_text("%d\u2009%%".format(pct));
                 this._statusIcon.visible = true;
                 this._statusIcon.gicon = getFolderStatusIcon("cloud-down");
+                break;
+            case "cleaning":
+            case "clean-waiting":
+                this._label_state.set_text("");
+                this._statusIcon.visible = true;
+                this._statusIcon.gicon = getFolderStatusIcon("database");
                 break;
             case "error":
                 this._label_state.set_text("");
@@ -179,7 +192,7 @@ class FolderMenuItem extends PopupMenu.PopupBaseMenuItem {
                 this._statusIcon.gicon = getFolderStatusIcon("question");
                 break;
             default:
-                myLog(`unknown syncthing folder state: ${state}`);
+                myLog(`unknown syncthing folder state "${state}"`);
                 this._label_state.set_text("");
                 this._statusIcon.visible = true;
                 this._statusIcon.gicon = getFolderStatusIcon("question");

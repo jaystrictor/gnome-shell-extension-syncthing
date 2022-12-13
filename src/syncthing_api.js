@@ -5,6 +5,8 @@ const GObject = imports.gi.GObject;
 const GLib = imports.gi.GLib;
 const Soup = imports.gi.Soup;
 
+const decoder = new TextDecoder('utf-8');
+
 function myLog(msg) {
     log(`[syncthingicon] ${msg}`);
 }
@@ -24,7 +26,7 @@ var Folder = GObject.registerClass({
 }, class Folder extends GObject.Object {
     _init(apiSession, folderConfig) {
         super._init();
-        this._soup_msg = null;
+        this._cancellable = null;
         this.state = null;
         this.label = null;
         this.path = null;
@@ -33,8 +35,8 @@ var Folder = GObject.registerClass({
         this._setFolderConfig(folderConfig);
     }
 
-    _folderReceived(session, msg) {
-        this._soup_msg = null;
+    _folderReceived(msg, session, task) {
+        this._cancellable = null;
         if (msg.status_code === Soup.Status.CANCELLED) {
             // We cancelled the message. Do nothing.
             return;
@@ -45,7 +47,8 @@ var Folder = GObject.registerClass({
             this.emit("state-changed", this.state, 0);
             return;
         }
-        let data = msg.response_body.data;
+        let bytes = session.send_and_read_finish(task);
+        let data = decoder.decode(bytes.get_data());
         this._parseFolderData(data);
     }
 
@@ -102,21 +105,25 @@ var Folder = GObject.registerClass({
 
     statusRequest(uri, apikey) {
         let soupSession = this._apiSession.soupSession;
-        if (this._soup_msg)
-            soupSession.cancel_message(this._soup_msg, Soup.Status.CANCELLED);
         // This is an expensive call, increasing CPU and RAM usage on the device. Use sparingly.
         let query_uri = `${uri}/rest/db/status?folder=${this.id}`;
-        this._soup_msg = Soup.Message.new("GET", query_uri);
+        let msg = Soup.Message.new("GET", query_uri);
         if (apikey) {
-            this._soup_msg.request_headers.append("X-API-Key", apikey);
+            msg.request_headers.append("X-API-Key", apikey);
         }
-        soupSession.queue_message(this._soup_msg, this._folderReceived.bind(this));
+
+        if (this._cancellable) {
+            this._cancellable.cancel();
+        }
+        this._cancellable = new Gio.Cancellable();
+
+        soupSession._original_send_and_read_async(msg, GLib.PRIORITY_DEFAULT, this._cancellable, this._folderReceived.bind(this, msg));
     }
 
     cancelUpdate() {
-        if (this._soup_msg) {
-            let soupSession = this._apiSession.soupSession;
-            soupSession.cancel_message(this._soup_msg, Soup.Status.CANCELLED);
+        if (this._cancellable) {
+            this._cancellable.cancel();
+            this._cancellable = null;
         }
     }
 });
@@ -145,33 +152,39 @@ var SyncthingSession = GObject.registerClass({
         // id -> folder
         this.folders = new Map();
         this.state = null;
+        this._cancellable_config = null;
+        this._cancellable_connections = null;
 
         this._timeoutManager = new TimeoutManager(this.update.bind(this));
         this._timeoutManager.changeTimeout(1, 64);
     }
 
-    _statusNotOk(msg, uri) {
-        myLog(`Failed to connect to syncthing daemon at URI “${uri}”: ${msg.reason_phrase}`);
-        if (msg.status_code === Soup.Status.SSL_FAILED) {
+    _statusNotOk(uri, status_code, reason_phrase, data) {
+        myLog(`Failed to connect to syncthing daemon at URI “${uri}”: ${reason_phrase}`);
+        if (status_code === Soup.Status.SSL_FAILED) {
             myLog("TLS is currently not supported.");
-        } else if (msg.response_body.data === "CSRF Error\n") {
+        } else if (data === "CSRF Error\n") {
             myLog("CSRF Error. Please verify your API key.");
-        } else if (msg.response_body.data !== null) {
-            myLog(`Response body: ${msg.response_body.data}`);
+        } else if (data !== null) {
+            myLog(`Response body: ${data}`);
         }
         this._setConnectionState("disconnected");
     }
 
-    _configReceived(uri, apikey, session, msg) {
+    _configReceived(uri, apikey, msg, session, task) {
+        this._cancellable_config = null;
+
+        let bytes = session.send_and_read_finish(task);
+        let data = decoder.decode(bytes.get_data());
+
         if (msg.status_code !== Soup.Status.OK) {
-            this._statusNotOk(msg, uri);
+            this._statusNotOk(uri, msg.status_code, msg.reason_phrase, data);
             for (let folder of this.folders.values()) {
                 this.emit("folder-removed", folder);
             }
             this.folders = new Map();
             return;
         }
-        let data = msg.response_body.data;
         try {
             this._parseConfig(uri, apikey, data);
         } catch(e) {
@@ -226,7 +239,13 @@ var SyncthingSession = GObject.registerClass({
         if (apikey) {
             msg.request_headers.append("X-API-Key", apikey);
         }
-        this.soupSession.queue_message(msg, this._configReceived.bind(this, uri, apikey));
+
+        if (this._cancellable_config) {
+            this._cancellable_config.cancel();
+        }
+        this._cancellable_config = new Gio.Cancellable();
+
+        this.soupSession._original_send_and_read_async(msg, GLib.PRIORITY_DEFAULT, this._cancellable_config, this._configReceived.bind(this, uri, apikey, msg));
     }
 
     _parseConnections(data) {
@@ -310,13 +329,17 @@ var SyncthingSession = GObject.registerClass({
         }
     }
 
-    _connectionsReceived(uri, session, msg) {
+    _connectionsReceived(uri, msg, session, task) {
+        this._cancellable_connections = null;
+
+        let bytes = session.send_and_read_finish(task);
+        let data = decoder.decode(bytes.get_data());
+
         if (msg.status_code !== Soup.Status.OK) {
-            this._statusNotOk(msg, uri);
+            this._statusNotOk(uri, msg.status_code, msg.reason_phrase, data);
             // Do nothing.
             return;
         }
-        let data = msg.response_body.data;
         try {
             this._parseConnections(data);
         } catch(e) {
@@ -330,7 +353,13 @@ var SyncthingSession = GObject.registerClass({
         if (this.apikey) {
             msg.request_headers.append("X-API-Key", this.apikey);
         }
-        this.soupSession.queue_message(msg, this._connectionsReceived.bind(this, uri));
+
+        if (this._cancellable_connections) {
+            this._cancellable_connections.cancel();
+        }
+        this._cancellable_connections = new Gio.Cancellable();
+
+        this.soupSession._original_send_and_read_async(msg, GLib.PRIORITY_DEFAULT, this._cancellable_connections, this._connectionsReceived.bind(this, uri, msg));
     }
 
     update() {
@@ -360,10 +389,14 @@ var SyncthingSession = GObject.registerClass({
     }
 
     cancelAllUpdates() {
-        if (this._connections_soup_msg)
-            this.soupSession.cancel_message(this._connections_soup_msg, Soup.Status.CANCELLED);
-        if (this._config_soup_msg)
-            this.soupSession.cancel_message(this._config_soup_msg, Soup.Status.CANCELLED);
+        if (this._cancellable_connections) {
+            this._cancellable_connections.cancel();
+            this._cancellable_connections = null;
+        }
+        if (this._cancellable_config) {
+            this._cancellable_config.cancel();
+            this._cancellable_config = null;
+        }
         for (let folder of this.folders.values()) {
             folder.cancelUpdate();
         }

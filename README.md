@@ -42,19 +42,7 @@ correct place for you.
 2. After that, you have to reload gnome-shell, either by logging out and in again,
 or by typing `Alt+F2` `r` `Return`.
 
-3. Then you can enable the extension by typing
-```sh
-gnome-shell-extension-tool -e syncthingicon@jay.strict@posteo.de
-```
-or, starting from Gnome 3.36:
-```sh
-gnome-extensions enable syncthingicon@jay.strict@posteo.de
-```
-or, alternatively, you can enable the extension using Gnome Tweak Tool or
-the extension preferences GUI:
-```sh
-gnome-shell-extension-prefs
-```
+3. Then you can enable the extension in the `gnome-extensions-app`.
 
 ## Debugging
 

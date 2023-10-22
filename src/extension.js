@@ -1,53 +1,34 @@
 "use strict";
 
-const Config = imports.misc.config;
-const Clutter = imports.gi.Clutter;
-const Gio = imports.gi.Gio;
-const GLib = imports.gi.GLib;
-const Gtk = imports.gi.Gtk;
-const St = imports.gi.St;
-const GObject = imports.gi.GObject;
+import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import St from 'gi://St';
+import GObject from 'gi://GObject';
 
-const Main = imports.ui.main;
-const PanelMenu = imports.ui.panelMenu;
-const PopupMenu = imports.ui.popupMenu;
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
+import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-const GETTEXT_DOMAIN = "gnome-shell-extension-syncthing";
-const Gettext = imports.gettext.domain(GETTEXT_DOMAIN);
-const _ = Gettext.gettext;
-
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
-const Filewatcher = Me.imports.filewatcher;
-const Folders = Me.imports.folders;
-const SyncthingApi = Me.imports.syncthing_api;
-const Systemd = Me.imports.systemd;
+import * as Filewatcher from './filewatcher.js';
+import * as Folders from './folders.js';
+import * as SyncthingApi from './syncthing_api.js';
+import * as Systemd from './systemd.js';
 
 function myLog(msg) {
     log(`[syncthingicon] ${msg}`);
 }
 
-function getStatusIcon(iconName) {
-    let path = Me.dir.get_path() + "/icons/hicolor/scalable/status/" + iconName + ".svg";
-    let gicon = Gio.icon_new_for_string(path);
-    return gicon;
-}
-
-function getSyncthingIcon(iconName) {
-    let path = Me.dir.get_path() + "/icons/hicolor/symbolic/apps/syncthing-symbolic.svg";
-    let gicon = Gio.icon_new_for_string(path);
-    return gicon;
-}
-
-
 const SyncthingMenu = new GObject.registerClass(
     class SyncthingMenu extends PanelMenu.Button {
-        _init() {
+        _init(ext) {
             super._init(0.0, "Syncthing", false);
 
+            this._ext = ext;
             this._api = new SyncthingApi.SyncthingSession();
-            this._settings = ExtensionUtils.getSettings();
+            this._settings = this._ext.getSettings();
             this._systemd = new Systemd.Control(64);
 
             this._initButton();
@@ -70,7 +51,7 @@ const SyncthingMenu = new GObject.registerClass(
             let box = new St.BoxLayout();
             this.add_actor(box);
 
-            this._syncthingIcon = new St.Icon({ gicon: getSyncthingIcon(),
+            this._syncthingIcon = new St.Icon({ gicon: this._getSyncthingIcon(),
                 style_class: "system-status-icon" });
             box.add_child(this._syncthingIcon);
 
@@ -99,7 +80,7 @@ const SyncthingMenu = new GObject.registerClass(
             this.menu.addMenuItem(this.separator);
 
             // 4. Folder List
-            this.folder_list = new Folders.FolderList(this, this._api);
+            this.folder_list = new Folders.FolderList(this, this._api, this._ext);
             this.menu.addMenuItem(this.folder_list);
         }
 
@@ -164,8 +145,8 @@ const SyncthingMenu = new GObject.registerClass(
         }
 
         _openWebView() {
-            let working_dir = Me.dir.get_path();
-            let [ok, pid] = GLib.spawn_async(working_dir, ["gjs", "webviewer.js"], null, GLib.SpawnFlags.SEARCH_PATH, null);
+            let working_dir = this._ext.dir.get_path();
+            let [ok, pid] = GLib.spawn_async(working_dir, ["gjs", "-m", "webviewer.js"], null, GLib.SpawnFlags.SEARCH_PATH, null);
             GLib.spawn_close_pid(pid);
         }
 
@@ -236,11 +217,23 @@ const SyncthingMenu = new GObject.registerClass(
             } else {
                 this._statusIcon.visible = true;
                 if (this.systemd_state !== "inactive") {
-                    this._statusIcon.gicon = getStatusIcon("exclamation-triangle");
+                    this._statusIcon.gicon = this._getStatusIcon("exclamation-triangle");
                 } else {
-                    this._statusIcon.gicon = getStatusIcon("pause");
+                    this._statusIcon.gicon = this._getStatusIcon("pause");
                 }
             }
+        }
+
+        _getStatusIcon(iconName) {
+            let path = this._ext.dir.get_path() + "/icons/hicolor/scalable/status/" + iconName + ".svg";
+            let gicon = Gio.icon_new_for_string(path);
+            return gicon;
+        }
+
+        _getSyncthingIcon() {
+            let path = this._ext.dir.get_path() + "/icons/hicolor/symbolic/apps/syncthing-symbolic.svg";
+            let gicon = Gio.icon_new_for_string(path);
+            return gicon;
         }
 
         notifyListChanged() {
@@ -261,20 +254,14 @@ const SyncthingMenu = new GObject.registerClass(
 );
 
 
-function init(extension) {
-    ExtensionUtils.initTranslations(GETTEXT_DOMAIN);
-}
+export default class SyncthingIconExtension extends Extension {
+    enable() {
+        this._syncthing = new SyncthingMenu(this);
+        Main.panel.addToStatusArea("syncthing", this._syncthing);
+    }
 
-
-let _syncthing;
-
-function enable() {
-    _syncthing = new SyncthingMenu();
-    Main.panel.addToStatusArea("syncthing", _syncthing);
-}
-
-
-function disable() {
-    _syncthing.destroy();
-    _syncthing = null;
+    disable() {
+        this._syncthing.destroy();
+        this._syncthing = null;
+    }
 }

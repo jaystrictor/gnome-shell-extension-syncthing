@@ -1,8 +1,8 @@
 "use strict";
 
-const Gio = imports.gi.Gio;
-const GObject = imports.gi.GObject;
-const GLib = imports.gi.GLib;
+import Gio from 'gi://Gio';
+import GObject from 'gi://GObject';
+import GLib from 'gi://GLib';
 
 
 function myLog(msg) {
@@ -10,7 +10,7 @@ function myLog(msg) {
 }
 
 
-var Control = GObject.registerClass({
+export const Control = GObject.registerClass({
     Signals: {
         "state-changed": {
             // "systemd-not-available", "unit-not-loaded", "active", or "inactive"

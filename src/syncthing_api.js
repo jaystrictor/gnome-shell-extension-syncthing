@@ -1,9 +1,9 @@
 "use strict";
 
-const Gio = imports.gi.Gio;
-const GObject = imports.gi.GObject;
-const GLib = imports.gi.GLib;
-const Soup = imports.gi.Soup;
+import Gio from 'gi://Gio';
+import GObject from 'gi://GObject';
+import GLib from 'gi://GLib';
+import Soup from 'gi://Soup';
 
 const decoder = new TextDecoder('utf-8');
 
@@ -129,7 +129,7 @@ var Folder = GObject.registerClass({
 });
 
 
-var SyncthingSession = GObject.registerClass({
+export const SyncthingSession = GObject.registerClass({
     Signals: {
         "connection-state-changed": {
             param_types: [ GObject.TYPE_STRING ],

@@ -439,7 +439,7 @@ ${XMLNS_NAMESPACE}.`);
  * like.
  */
 
-var SaxesParser = class SaxesParser {
+export const SaxesParser = class SaxesParser {
   /**
    * @param {SaxesOptions} opt The parser options.
    */

@@ -1,24 +1,22 @@
 "use strict";
 
-const Clutter = imports.gi.Clutter;
-const Gio = imports.gi.Gio;
-const GObject = imports.gi.GObject;
-const St = imports.gi.St;
+import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
+import GObject from 'gi://GObject';
+import St from 'gi://St';
 
 
-const Main = imports.ui.main;
-const PopupMenu = imports.ui.popupMenu;
-
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 function myLog(msg) {
     log(`[syncthingicon] ${msg}`);
 }
 
-var FolderList = class extends PopupMenu.PopupMenuSection {
-    constructor(menu, api) {
+export const FolderList = class extends PopupMenu.PopupMenuSection {
+    constructor(menu, api, ext) {
         super();
+        this._ext = ext;
         this._menu = menu;
         this._api = api;
         this.folder_ids = [];
@@ -32,7 +30,7 @@ var FolderList = class extends PopupMenu.PopupMenuSection {
         let id = folder.id;
         let position = this._sortedIndex(id);
         this.folder_ids.splice(position, 0, id);
-        let menuitem = new FolderMenuItem(folder);
+        let menuitem = new FolderMenuItem(folder, this._ext);
         this.addMenuItem(menuitem, position);
         this.folders.set(id, menuitem);
         this._menu.notifyListChanged();
@@ -74,16 +72,9 @@ var FolderList = class extends PopupMenu.PopupMenuSection {
 }
 
 
-function getFolderStatusIcon(iconName) {
-    let path = Me.dir.get_path() + "/icons/hicolor/scalable/status/" + iconName + ".svg";
-    let gicon = Gio.icon_new_for_string(path);
-    return gicon;
-}
-
-
 var FolderMenuItem = GObject.registerClass(
 class FolderMenuItem extends PopupMenu.PopupBaseMenuItem {
-    _init(folder) {
+    _init(folder, ext) {
         super._init();
         this.folder = folder;
         this._icon = new St.Icon({ gicon: this._getIcon(folder.path),
@@ -128,6 +119,12 @@ class FolderMenuItem extends PopupMenu.PopupBaseMenuItem {
         }
     }
 
+    _getFolderStatusIcon(iconName) {
+        let path = this._ext.dir.get_path() + "/icons/hicolor/scalable/status/" + iconName + ".svg";
+        let gicon = Gio.icon_new_for_string(path);
+        return gicon;
+    }
+
     activate(event) {
         let path = this.folder.path;
         if (! path)
@@ -166,36 +163,36 @@ class FolderMenuItem extends PopupMenu.PopupBaseMenuItem {
             case "scan-waiting":
                 this._label_state.set_text("");
                 this._statusIcon.visible = true;
-                this._statusIcon.gicon = getFolderStatusIcon("database");
+                this._statusIcon.gicon = _getFolderStatusIcon("database");
                 break;
             case "sync-waiting":
             case "sync-preparing":
             case "syncing":
                 this._label_state.set_text("%d\u2009%%".format(pct));
                 this._statusIcon.visible = true;
-                this._statusIcon.gicon = getFolderStatusIcon("cloud-down");
+                this._statusIcon.gicon = _getFolderStatusIcon("cloud-down");
                 break;
             case "cleaning":
             case "clean-waiting":
                 this._label_state.set_text("");
                 this._statusIcon.visible = true;
-                this._statusIcon.gicon = getFolderStatusIcon("database");
+                this._statusIcon.gicon = _getFolderStatusIcon("database");
                 break;
             case "error":
                 this._label_state.set_text("");
                 this._statusIcon.visible = true;
-                this._statusIcon.gicon = getFolderStatusIcon("exclamation-triangle");
+                this._statusIcon.gicon = _getFolderStatusIcon("exclamation-triangle");
                 break;
             case "unknown":
                 this._label_state.set_text("");
                 this._statusIcon.visible = true;
-                this._statusIcon.gicon = getFolderStatusIcon("question");
+                this._statusIcon.gicon = _getFolderStatusIcon("question");
                 break;
             default:
                 myLog(`unknown syncthing folder state "${state}"`);
                 this._label_state.set_text("");
                 this._statusIcon.visible = true;
-                this._statusIcon.gicon = getFolderStatusIcon("question");
+                this._statusIcon.gicon = _getFolderStatusIcon("question");
         }
     }
 

@@ -1,21 +1,17 @@
 "use strict";
 
-const Gio = imports.gi.Gio;
-const Gtk = imports.gi.Gtk;
-const GObject = imports.gi.GObject;
+import Gio from 'gi://Gio';
+import Gtk from 'gi://Gtk';
+import GObject from 'gi://GObject';
+import Adw from 'gi://Adw';
 
-const GETTEXT_DOMAIN = "gnome-shell-extension-syncthing";
-const Gettext = imports.gettext.domain(GETTEXT_DOMAIN);
-const _ = Gettext.gettext;
-
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
+import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 const SyncthingIconPrefsWidget = GObject.registerClass(
 class SyncthingIconPrefsWidget extends Gtk.Grid {
-    _init(params) {
-        super._init(params);
-        this._settings = ExtensionUtils.getSettings();
+    _init(settings) {
+        super._init();
+        this._settings = settings;
 
         this.margin = 18;
         this.row_spacing = this.column_spacing = 12;
@@ -98,12 +94,15 @@ class SyncthingIconPrefsWidget extends Gtk.Grid {
     }
 });
 
-function init(metadata) {
-    ExtensionUtils.initTranslations(GETTEXT_DOMAIN);
-}
 
-function buildPrefsWidget() {
-    let widget = new SyncthingIconPrefsWidget();
+export default class SystemMonitorExtensionPreferences extends ExtensionPreferences {
+    fillPreferencesWindow(window) {
+        const page = new Adw.PreferencesPage();
+        const group = new Adw.PreferencesGroup();
+        const widget = new SyncthingIconPrefsWidget(this.getSettings());
 
-    return widget;
+        group.add(widget);
+        page.add(group);
+        window.add(page);
+    }
 }

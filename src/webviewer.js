@@ -1,18 +1,17 @@
 "use strict";
 
-imports.gi.versions.Gtk = '3.0';
-imports.gi.versions.WebKit2 = '4.0';
-const Gio = imports.gi.Gio;
-const Gtk = imports.gi.Gtk;
-const GObject = imports.gi.GObject;
-const WebKit = imports.gi.WebKit2;
+import Gio from 'gi://Gio';
+import Gtk from 'gi://Gtk?version=3.0';
+import GObject from 'gi://GObject';
+import WebKit from 'gi://WebKit2?version=4.0';
+import * as Filewatcher from './filewatcher.js';
 
 function getCurrentDir() {
     let stack = (new Error()).stack;
     let stackLine = stack.split("\n")[1];
     if (!stackLine)
         throw new Error("Could not find current file.");
-    let match = new RegExp("@(.+):\\d+").exec(stackLine);
+    let match = new RegExp("@file://(.+):\\d+").exec(stackLine);
     if (!match)
         throw new Error("Could not find current file.");
     let path = match[1];
@@ -20,7 +19,6 @@ function getCurrentDir() {
     return file.get_parent();
 }
 imports.searchPath.unshift(getCurrentDir().get_path());
-const Filewatcher = imports.filewatcher;
 
 function myLog(msg) {
     log(`[syncthingicon-webview] ${msg}`);

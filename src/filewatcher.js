@@ -1,8 +1,8 @@
 "use strict";
 
-const Lang = imports.lang;
-const Gio = imports.gi.Gio;
-const GLib = imports.gi.GLib;
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import * as Saxes from './saxes.js';
 
 function getCurrentDir() {
     let stack = (new Error()).stack;
@@ -17,13 +17,12 @@ function getCurrentDir() {
     return file.get_parent();
 }
 imports.searchPath.unshift(getCurrentDir().get_path());
-const Saxes = imports.saxes;
 
 function myLog(msg) {
     log(`[syncthingicon] ${msg}`);
 }
 
-function probeDirectories() {
+export function probeDirectories() {
     const directories = [
         `${GLib.get_user_config_dir()}/syncthing`,
         `${GLib.get_home_dir()}/snap/syncthing/common/syncthing`,
@@ -46,7 +45,7 @@ function probeDirectories() {
     return null;
 }
 
-const ConfigParser = class {
+export const ConfigParser = class {
     constructor(file) {
         this.file = file;
         this.state = "root";
@@ -132,7 +131,7 @@ const ConfigParser = class {
 const WARMUP_TIME = 1;
 const COOLDOWN_TIME = 10;
 
-var ConfigFileWatcher = class {
+export const ConfigFileWatcher = class {
     /* File Watcher with 4 internal states:
        ready -> warmup -> running -> cooldown
          ^                              |
